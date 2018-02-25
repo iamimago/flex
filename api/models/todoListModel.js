@@ -7,6 +7,12 @@ var TaskSchema = new Schema({
     type: String,
     required: 'Kindly enter the name of the task'
   },
+  
+  cunt: {
+    type: String,
+    required: 'Kindly enter the name of the task'
+  },
+
   Created_date: {
     type: Date,
     default: Date.now

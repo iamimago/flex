@@ -3,17 +3,16 @@ var express = require('express'),
   port = process.env.PORT || 3000,
   mongoose = require('mongoose'),
   Task = require('./api/models/todoListModel'),
+  path = require('path'),
   bodyParser = require('body-parser');
+
+global.appRoot = path.resolve(__dirname);
 
 mongoose.Promise = global.Promise;
 mongoose.connect('mongodb://localhost/Tododb');
 
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(bodyParser.json());
-app.use(function(req, res) {
-    res.status(404).send({url: req.originalUrl + ' not found'})
-  });
-
   
 var routes = require('./api/routes/todoListRoutes');
 routes(app);
