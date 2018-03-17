@@ -17,6 +17,10 @@ module.exports = function (app) {
   app
     .route('/index.js')
     .get(todoList.send_js);
+
+  app
+  .route('/style.css')
+  .get(todoList.send_css);
   
 
   app

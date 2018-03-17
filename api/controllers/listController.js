@@ -12,9 +12,12 @@ exports.send_index = function(req, res) {
      (req.connection.socket ? req.connection.socket.remoteAddress : null);
   console.log("Someone connected from: " + ip);
   
-  
   res.sendFile(path.join(global.appRoot + '/index.html'));
 };
+
+exports.send_css = function(req, res){
+  res.sendFile(path.join(global.appRoot + '/mainStyle.css'));
+}
 
 exports.send_js = function(req, res){
   res.sendFile(path.join(global.appRoot + '/index.js'));
