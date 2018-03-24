@@ -6,23 +6,19 @@ if (window.jQuery) {
     console.log("---jQuery failed to load---");
 }
 
-let oSpeedOuter = 200;
-let oSpeedInner = 200;
-let oSpeedInner2 = 50;
-let oDistanceInner = 300;
+if (typeof (Storage) !== "undefined") {
+    // Code for localStorage/sessionStorage.
+    console.log("---Storage supported---");
 
-function initiateDots(parent, amount, row) {
-    for (let c = 0; c < amount; c++) {
-        let el = document.createElement("div");
-        el.setAttribute("class", "circular-menu-item-" + row + " circular-menu-item");
-        parent.appendChild(el);
-    }
+} else {
+    // Sorry! No Web Storage support..
+    console.log("---Storage unsupported---");
 }
 
 function createMenus(amount) {
-    let wH = window.innerHeight;
+    const wH = window.innerHeight;
     for (let c = 2; c < amount + 2; c++) {
-        let el = document.createElement("div");
+        const el = document.createElement("div");
         el.setAttribute("class", "circular-menu-" + (c - 2) + " circular-menu");
 
         el.style.width = wH / amount * (c - 1) - 20 + "px";
@@ -32,75 +28,78 @@ function createMenus(amount) {
     }
 }
 
-let pos = 0;
-let neg = 0;
-let before, w, items, circleEdge, cB, e, radius, xPos, yPos;
-let circles = document.getElementsByClassName("circular-menu");
-
-function draw(offset) {
-    let offsetChanger = Math.sin(offset / oSpeedInner) * oDistanceInner;
-
-    for (let i = 0; i < circles.length; i++) {
-        //circle is round.
-        circles[i].style.width = w;
-        circles[i].style.height = w;
-
-        items = document.getElementsByClassName("circular-menu-item-" + i);
-        circleEdge = document.getElementsByClassName("circular-menu-" + i);
-        cB = circles[i].getBoundingClientRect();
-
-        // Fun browser test below
-        /* for(let c = 0; c<items.length;c++){
-    e = items[c];
-    radius = cB.width/2;
-    xPos = (Math.cos((offset+offsetChanger + (c*20))/oSpeedOuter + c * (2*Math.PI/items.length)) * radius)    + cB.width/2;
-    yPos = (Math.sin((offset+offsetChanger + (c*20))/oSpeedOuter + c * (2*Math.PI/items.length)) * radius)    + cB.height/2;
-
-
-    e.style.left = xPos - e.getBoundingClientRect().width/2  + "px"; 
-    e.style.top  = yPos - e.getBoundingClientRect().height/2 + "px";
-} */
-    }
-}
-
-
-let fps = 60;
-let o = 0;
-
-function circleLoop() {
-    draw(o);
-    o++;
-    let condition = (o == 500) && false;
-    if (!condition) {
-        setTimeout(circleLoop, 1000 / fps);
-    }
-}
-
-let toggle = false;
-let cycle = 2000;
+const cycle = 2500;
 
 function shadowLoop() {
-    let circles = document.getElementsByClassName("circular-menu");
+    const circles = document.getElementsByClassName("circular-menu");
 
-    if (!toggle) {
+    for (let i = 0; i < circles.length; i++) {
+        const el = circles[i];
+        el.toggle = false;
 
-        for (let i = 0; i < circles.length; i++) {
-            circles[i].style.boxShadow = "inset 0px 0px 0px 2px rgb(255, 255, 255)";
+
+        el.toggleOn = () => {
+            el.style.boxShadow = "0px 0px 200px 2px rgb(100, 100, 100), inset 0px 0px 200px 2px rgb(100, 100, 100)";
         }
-        toggle = true;
-    } else if (toggle) {
 
-        for (let i = 0; i < circles.length; i++) {
-            circles[i].style.boxShadow = "inset 0px 0px 200px 2px rgb(255, 255, 255)";
+        el.toggleOff = () => {
+            el.style.boxShadow = "0px 0px 0px 2px rgb(100, 100, 100), inset 0px 0px 0px 2px rgb(100, 100, 100)";
         }
-        toggle = false;
-    }
 
-    let condition = (o == 500) && false;
-    if (!condition) {
-        setTimeout(shadowLoop, 2000);
+        el.loop = () => {
+
+            if (el.toggle) {
+                el.toggleOn();
+                el.toggle = false;
+            } else {
+                el.toggleOff();
+                el.toggle = true;
+            }
+
+            const condition = false;
+            if (!condition) {
+                setTimeout(el.loop, cycle);
+            }
+        };
+
+        setTimeout(
+            () => el.loop(),
+            (2000 / circles.length) * i);
     }
 }
+
+if (typeof (Worker) !== "undefined") {
+    console.log("---Web Worker supported---");
+
+} else {
+    console.log("---Web Worker NOT supported---");
+}
+
+if (typeof (w) == "undefined") {
+    var w = new Worker("/neural");
+}
+
+w.onmessage = function (event) {
+    //TODO: Add things it does when it gets message
+    console.log("Message received by worker");
+};
+
+
+var msg = "Start yourself, worker!";
+
+w.postMessage({
+    'cmd': 'start',
+    'msg': msg
+});
+
+const mainFps = 60;
+
+function mainLoop() {
+    setTimeout(() => {
+        mainLoop();
+    }, 1000 / mainFps);
+}
+
 document.addEventListener('keydown', (event) => {
     const keyName = event.key;
 
@@ -113,26 +112,126 @@ document.addEventListener('keydown', (event) => {
         // Even though event.key is not 'Control' (i.e. 'a' is pressed),
         // event.ctrlKey may be true if Ctrl key is pressed at the time.
     } else {
-        if (keyName == 1) {
-            setMode(1);
-        }
-        if (keyName == 2) {
-            setMode(2);
-        }
-        if (keyName == 'n') {
-            reduceNode()
-        }
-        if (keyName == 'm') {
-            increaseNode()
-        }
         if (keyName == 'p') {
             alert('Paused script')
         }
     }
 }, false);
 
-createMenus(15);
-circleLoop();
-shadowLoop();
+function initMenues() {
+    const menuList = document.getElementsByClassName("smenu-item");
 
-//Redo: every circle has internal settimeout to it's own function
+    for (let i = 0; i < menuList.length; i++) {
+        const el = menuList[i];
+
+        el.onmouseover = () => {
+
+            if (el.dataset.toggle == 'min') {
+                el.children[0].innerHTML = el.dataset.type;
+                setTimeout(() => {}, 300);
+            }
+        };
+        el.onmouseout = () => {
+            if (el.dataset.toggle == 'min') {
+                el.children[0].innerHTML = el.dataset.type.slice(0, 1);
+            }
+        };
+    }
+}
+// function clickMenu(mode) {
+    //TODO: Move menu to top left
+    const menu = document.getElementById("square-menu");
+    const menuList = document.getElementsByClassName("smenu-item");
+    const border = document.getElementById("wrapper").getBoundingClientRect();
+
+    //MENU MAX -> MAKE MIN
+    if (menuList[0].dataset.toggle == "max") {
+        document.getElementById("title").style.paddingTop = "5%";
+        document.getElementById("text-wrapper").style.opacity = "1";
+
+        for (var i of menuList) {
+            i.children[0].innerHTML = i.dataset.type.slice(0, 1);
+            i.style.height = "50px";
+            i.style.width = "50px";
+            i.dataset.toggle = 'min';
+        }
+
+        menu.style.transform = "translate(0%,0%)";
+
+        menu.style.top = 10 + "px";
+        menu.style.left = border.x + 10 + 'px';
+
+        menu.style.width = "350px";
+        menu.style.height = "50px";
+
+        //TODO: Move up kinago.tech title, then fade in semi transparent text window
+        switch (mode) {
+            case "home":
+
+                break;
+
+            case "comp":
+
+                break;
+
+            case "exp":
+
+                break;
+
+            case "cv":
+
+                break;
+
+            default:
+                break;
+        }
+
+
+        //MENU MIN -> MAKE MAX
+    } else {
+        switch (mode) {
+            case "home":
+                document.getElementById("title").style.paddingTop = "10%";
+                document.getElementById("text-wrapper").style.opacity = "0";
+
+                for (var i of menuList) {
+                    i.children[0].innerHTML = i.dataset.type.slice(0, 1);
+                    i.style.height = "200px";
+                    i.style.width = "200px";
+                    i.dataset.toggle = 'max';
+                    i.children[0].innerHTML = i.dataset.type;
+                }
+
+                menu.style.transform = "translate(-50%,-50%)";
+
+                menu.style.top = "50vh";
+                menu.style.left = "50vw";
+
+                menu.style.width = "500px";
+                menu.style.height = "500px";
+
+                //TODO: Move up kinago.tech title, then fade in semi transparent text window
+                break;
+
+            case "comp":
+
+                break;
+
+            case "exp":
+
+                break;
+
+            case "cv":
+
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+initMenues();
+createMenus(10);
+shadowLoop();
+mainLoop();

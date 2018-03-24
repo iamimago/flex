@@ -1,7 +1,7 @@
 {
-  "name": "imagoaitradebot",
+  "name": "playground",
   "version": "1.0.0",
-  "description": "Trade bot using neural network to analyze market curves to potentially have a 50+% buy/winrate ",
+  "description": "Me playing with internenet stuff ",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,11 +13,6 @@
     "url": "git+https://github.com/iamimago/imagoigtradebot.git"
   },
   "keywords": [
-    "trade",
-    "bot",
-    "ai",
-    "nerural",
-    "network"
   ],
   "author": "Lorentz Kinde",
   "license": "ISC",

@@ -2,7 +2,8 @@ module.exports = {
   env: {
     browser: true,
     "node": true,
-    "jquery": true
+    "jquery": true,
+    "es6": true
   },
   extends: 'eslint:recommended',
   rules: {
@@ -21,7 +22,7 @@ module.exports = {
     'callback-return': 'off',
     camelcase: 'off',
     'capitalized-comments': 'off',
-    'class-methods-use-this': 'error',
+    'class-methods-use-this': 'off',
     'comma-dangle': 'off',
     'comma-spacing': 'off',
     'comma-style': 'off',

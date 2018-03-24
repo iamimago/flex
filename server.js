@@ -1,6 +1,6 @@
 var express = require('express'),
   app = express(),
-  port = process.env.PORT || 80,
+  port = process.env.PORT || 4000,
   mongoose = require('mongoose'),
   task = require('./api/models/listModel'),
   path = require('path'),
@@ -14,7 +14,7 @@ mongoose.connect('mongodb://localhost/Tododb');
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-var routes = require('./api/routes/listRoutes');
+var routes = require('./api/routes/routes');
 routes(app);
 
 app.listen(port);
