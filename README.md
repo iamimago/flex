@@ -13,6 +13,3 @@ To speed up the learning process of both enteties i also want to develop some so
 The idea is basically pretty scummy. It's a calculation botnet of sorts, where the clients who visits blissfully and continiously develop a neural network, they dont notice it at all, doesn't affect any performance, but i get 'useful' calculations done. Just using neural networks is mostly a placeholder for whatever calculations which might be needed in some future project, this concept is the original idea. My first intent were to mine bitcoin, but that would be very slightly too immoral, and ai is more interesting than blockchain.
 
 I justify this sort of concept by always ensuring the most effective code I can program, and also to never disturb the users experience. My reasoning is that there's plenty of really crappy and unoptimized code out there which just does nothing good at all and still slow down peoples systems, so i sort of do this intentionally and earn some processing power myself, while being transparent with it and not affecting the user experience. I'm pretty sure this sort of system isn't illegal... Maybe. As long as I dont earn money from it, it should be fine. 
-
-# AI version 1 (in development. Working on rules)
-Win conditions: 

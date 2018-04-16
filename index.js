@@ -15,8 +15,8 @@ if (typeof (Storage) !== "undefined") {
     console.log("---Storage unsupported---");
 }
 
-function createMenus(amount) {
-    const wH = window.innerHeight;
+function bgAnimInit(amount) {
+    const wH = window.innerWidth;
     for (let c = 2; c < amount + 2; c++) {
         const el = document.createElement("div");
         el.setAttribute("class", "circular-menu-" + (c - 2) + " circular-menu");
@@ -30,7 +30,7 @@ function createMenus(amount) {
 
 const cycle = 2000;
 
-function shadowLoop() {
+function bgAnimLoop() {
     const circles = document.getElementsByClassName("circular-menu");
 
     for (let i = 0; i < circles.length; i++) {
@@ -81,7 +81,7 @@ if (typeof (w) == "undefined") {
 
 w.onmessage = function (event) {
     //TODO: Add things it does when it gets message
-    console.log("Message received by worker");
+    console.log("Message recieved by worker %s" + event);
 };
 
 
@@ -189,7 +189,7 @@ function clickMenu(mode) {
         }
 
 
-        //MENU MIN -> MAKE MAX
+    //MENU MIN -> MAKE MAX
     } else {
         switch (mode) {
             case "home":
@@ -234,6 +234,6 @@ function clickMenu(mode) {
 }
 
 initMenues();
-createMenus(5);
-shadowLoop();
+bgAnimInit(8);
+bgAnimLoop();
 mainLoop();
