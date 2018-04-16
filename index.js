@@ -28,7 +28,7 @@ function createMenus(amount) {
     }
 }
 
-const cycle = 2500;
+const cycle = 2000;
 
 function shadowLoop() {
     const circles = document.getElementsByClassName("circular-menu");
@@ -39,11 +39,11 @@ function shadowLoop() {
 
 
         el.toggleOn = () => {
-            el.style.boxShadow = "0px 0px 200px 2px rgb(100, 100, 100), inset 0px 0px 200px 2px rgb(100, 100, 100)";
+            el.style.boxShadow = "0px 0px 100px 20px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+"), inset 0px 0px 100px 50px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+")";
         }
 
         el.toggleOff = () => {
-            el.style.boxShadow = "0px 0px 0px 2px rgb(100, 100, 100), inset 0px 0px 0px 2px rgb(100, 100, 100)";
+            el.style.boxShadow = "0px 0px 0px 2px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+"), inset 0px 0px 0px 2px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+")";
         }
 
         el.loop = () => {
@@ -95,6 +95,7 @@ w.postMessage({
 const mainFps = 60;
 
 function mainLoop() {
+    // 
     setTimeout(() => {
         mainLoop();
     }, 1000 / mainFps);
@@ -138,7 +139,8 @@ function initMenues() {
         };
     }
 }
-// function clickMenu(mode) {
+
+function clickMenu(mode) {
     //TODO: Move menu to top left
     const menu = document.getElementById("square-menu");
     const menuList = document.getElementsByClassName("smenu-item");
@@ -232,6 +234,6 @@ function initMenues() {
 }
 
 initMenues();
-createMenus(10);
+createMenus(5);
 shadowLoop();
 mainLoop();
