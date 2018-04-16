@@ -1,124 +1,10 @@
-if (window.jQuery) {
-    // jQuery is loaded  
-    console.log("---jQuery loaded from googleapi---");
-} else {
-    // jQuery is not loaded
-    console.log("---jQuery failed to load---");
-}
+/* Main javascript file. Used for initialization of stuff.*/
+/* Global declarations */
+let max = 10000000;
 
-if (typeof (Storage) !== "undefined") {
-    // Code for localStorage/sessionStorage.
-    console.log("---Storage supported---");
-
-} else {
-    // Sorry! No Web Storage support..
-    console.log("---Storage unsupported---");
-}
-
-function bgAnimInit(amount) {
-    const wH = window.innerWidth;
-    for (let c = 2; c < amount + 2; c++) {
-        const el = document.createElement("div");
-        el.setAttribute("class", "circular-menu-" + (c - 2) + " circular-menu");
-
-        el.style.width = wH / amount * (c - 1) - 20 + "px";
-        el.style.height = wH / amount * (c - 1) - 20 + "px";
-        el.style.zIndex = amount - (c - 2);
-        document.getElementById("circle-wrapper").appendChild(el);
-    }
-}
-
-const cycle = 2000;
-
-function bgAnimLoop() {
-    const circles = document.getElementsByClassName("circular-menu");
-
-    for (let i = 0; i < circles.length; i++) {
-        const el = circles[i];
-        el.toggle = false;
-
-
-        el.toggleOn = () => {
-            el.style.boxShadow = "0px 0px 100px 20px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+"), inset 0px 0px 100px 50px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+")";
-        }
-
-        el.toggleOff = () => {
-            el.style.boxShadow = "0px 0px 0px 2px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+"), inset 0px 0px 0px 2px rgb("+ Math.random()*255+", "+ Math.random()*255+", "+ Math.random()*255+")";
-        }
-
-        el.loop = () => {
-
-            if (el.toggle) {
-                el.toggleOn();
-                el.toggle = false;
-            } else {
-                el.toggleOff();
-                el.toggle = true;
-            }
-
-            const condition = false;
-            if (!condition) {
-                setTimeout(el.loop, cycle);
-            }
-        };
-
-        setTimeout(
-            () => el.loop(),
-            (2000 / circles.length) * i);
-    }
-}
-
-if (typeof (Worker) !== "undefined") {
-    console.log("---Web Worker supported---");
-
-} else {
-    console.log("---Web Worker NOT supported---");
-}
-
-if (typeof (w) == "undefined") {
-    var w = new Worker("/neural");
-}
-
-w.onmessage = function (event) {
-    //TODO: Add things it does when it gets message
-    console.log("Message recieved by worker %s" + event);
-};
-
-
-var msg = "Start yourself, worker!";
-
-w.postMessage({
-    'cmd': 'start',
-    'msg': msg
-});
-
-const mainFps = 60;
-
-function mainLoop() {
-    // 
-    setTimeout(() => {
-        mainLoop();
-    }, 1000 / mainFps);
-}
-
-document.addEventListener('keydown', (event) => {
-    const keyName = event.key;
-
-    if (keyName === 'Control') {
-        // do not alert when only Control key is pressed.
-        return;
-    }
-
-    if (event.ctrlKey) {
-        // Even though event.key is not 'Control' (i.e. 'a' is pressed),
-        // event.ctrlKey may be true if Ctrl key is pressed at the time.
-    } else {
-        if (keyName == 'p') {
-            alert('Paused script')
-        }
-    }
-}, false);
-
+/* Alterable variables */
+let cycle = 2000;
+const mainFps = 1;
 function initMenues() {
     const menuList = document.getElementsByClassName("smenu-item");
 
@@ -140,100 +26,181 @@ function initMenues() {
     }
 }
 
-function clickMenu(mode) {
-    //TODO: Move menu to top left
-    const menu = document.getElementById("square-menu");
-    const menuList = document.getElementsByClassName("smenu-item");
-    const border = document.getElementById("wrapper").getBoundingClientRect();
+function initWorker() {
+    if (typeof (Worker) !== "undefined") {
+        console.log("---Web Worker supported---");
 
-    //MENU MAX -> MAKE MIN
-    if (menuList[0].dataset.toggle == "max") {
-        document.getElementById("title").style.paddingTop = "5%";
-        document.getElementById("text-wrapper").style.opacity = "1";
-
-        for (var i of menuList) {
-            i.children[0].innerHTML = i.dataset.type.slice(0, 1);
-            i.style.height = "50px";
-            i.style.width = "50px";
-            i.dataset.toggle = 'min';
-        }
-
-        menu.style.transform = "translate(0%,0%)";
-
-        menu.style.top = 10 + "px";
-        menu.style.left = border.x + 10 + 'px';
-
-        menu.style.width = "350px";
-        menu.style.height = "50px";
-
-        //TODO: Move up kinago.tech title, then fade in semi transparent text window
-        switch (mode) {
-            case "home":
-
-                break;
-
-            case "comp":
-
-                break;
-
-            case "exp":
-
-                break;
-
-            case "cv":
-
-                break;
-
-            default:
-                break;
-        }
-
-
-    //MENU MIN -> MAKE MAX
     } else {
-        switch (mode) {
-            case "home":
-                document.getElementById("title").style.paddingTop = "10%";
-                document.getElementById("text-wrapper").style.opacity = "0";
+        console.log("---Web Worker NOT supported---");
+    }
 
-                for (var i of menuList) {
-                    i.children[0].innerHTML = i.dataset.type.slice(0, 1);
-                    i.style.height = "200px";
-                    i.style.width = "200px";
-                    i.dataset.toggle = 'max';
-                    i.children[0].innerHTML = i.dataset.type;
-                }
+    if (typeof (w) == "undefined") {
+        var w = new Worker("/neural");
+    }
 
-                menu.style.transform = "translate(-50%,-50%)";
+    w.onmessage = function (event) {
+        //TODO: Add things it does when it gets message
+        console.log("Message recieved by worker %s" + event);
+    };
 
-                menu.style.top = "50vh";
-                menu.style.left = "50vw";
 
-                menu.style.width = "500px";
-                menu.style.height = "500px";
+    const msg = "Start yourself, worker!";
 
-                //TODO: Move up kinago.tech title, then fade in semi transparent text window
-                break;
+    w.postMessage({
+        'cmd': 'start',
+        'msg': msg
+    });
+}
 
-            case "comp":
+function initBgAnim(amount) {
+    const wH = window.innerWidth;
+    for (let c = 2; c < amount + 2; c++) {
+        const el = document.createElement("div");
+        el.setAttribute("class", "circular-menu-" + (c - 2) + " circular-menu");
 
-                break;
+        el.style.width = wH / amount * (c - 1) - 20 + "px";
+        el.style.height = wH / amount * (c - 1) - 20 + "px";
+        el.style.zIndex = amount - (c - 2);
+        document.getElementById("circle-wrapper").appendChild(el);
+    }
 
-            case "exp":
+    document.getElementById("circle-wrapper").style.opacity = "1";
+}
 
-                break;
+function initPerformance() {
+    const t0 = performance.now();
+    let p = 0;
 
-            case "cv":
-
-                break;
-
-            default:
-                break;
+    while ((performance.now() - t0) <= 200) {
+        //TODO: Implement neural network test here
+        
+        let x, y;
+        x = 0;
+        //Dummy calculations
+        for (let i = 0; i < 100000; i++) {
+            y *= x;
+            x++;
+            if((performance.now() - t0) >= 200){
+                i = 1000000;
+            }
         }
+        p++;
+    }
+    console.log("Performance p = " + p);
+    
+    p=5;
+    return p;
+}
+
+function init() {
+    if (window.jQuery) {
+        // jQuery is loaded  
+        console.log("---jQuery loaded from googleapi---");
+    } else {
+        // jQuery is not loaded
+        console.log("---jQuery failed to load---");
+    }
+
+    if (typeof (Storage) !== "undefined") {
+        // Code for localStorage/sessionStorage.
+        console.log("---Storage supported---");
+
+    } else {
+        // Sorry! No Web Storage support..
+        console.log("---Storage unsupported---");
+    }
+
+    document.addEventListener('keydown', (event) => {
+        const keyName = event.key;
+
+        if (keyName === 'Control') {
+            // do not alert when only Control key is pressed.
+            return;
+        }
+
+        if (event.ctrlKey) {
+            // Even though event.key is not 'Control' (i.e. 'a' is pressed),
+            // event.ctrlKey may be true if Ctrl key is pressed at the time.
+        } else {
+            if (keyName == 'p') {
+                alert('Paused script')
+            }
+        }
+    }, false);
+
+    const amountCircles = initPerformance();
+    initMenues();
+    initBgAnim(amountCircles);
+}
+
+init();
+
+function bgAnimLoop() {
+    const circles = document.getElementsByClassName("circular-menu");
+
+    for (let i = 0; i < circles.length; i++) {
+        const el = circles[i];
+        el.toggle = false;
+
+
+        el.toggleOn = () => {
+            el.style.boxShadow = "0px 0px 100px 20px rgb(" + Math.random() * 255 + ", " + Math.random() * 255 + ", " + Math.random() * 255 + "), inset 0px 0px 100px 50px rgb(" + Math.random() * 255 + ", " + Math.random() * 255 + ", " + Math.random() * 255 + ")";
+        }
+
+        el.toggleOff = () => {
+            el.style.boxShadow = "0px 0px 0px 2px rgb(" + Math.random() * 255 + ", " + Math.random() * 255 + ", " + Math.random() * 255 + "), inset 0px 0px 0px 2px rgb(" + Math.random() * 255 + ", " + Math.random() * 255 + ", " + Math.random() * 255 + ")";
+        }
+
+        el.loop = () => {
+
+            if (el.toggle) {
+                el.toggleOn();
+                el.toggle = false;
+            } else {
+                el.toggleOff();
+                el.toggle = true;
+            }
+
+            const condition = false;
+            if (!condition) {
+                setTimeout(el.loop, cycle);
+            }
+        };
+
+        setTimeout(
+            () => el.loop(),
+            (cycle / circles.length) * i);
     }
 }
 
-initMenues();
-bgAnimInit(8);
-bgAnimLoop();
-mainLoop();
+function mainLoop() {
+    //TODO: Something..? I guess? Loop template foor now. 
+    checkPerformance();
+    setTimeout(() => {
+        mainLoop();
+    }, 1000 / mainFps);
+}
+
+function loop() {
+    bgAnimLoop();
+    mainLoop();
+}
+
+loop();
+
+function checkPerformance(){
+    const t0 = performance.now();
+    let x, y;
+    x = 0;
+    //Dummy calculations
+    for (let i = 0; i < max; i++) {
+        x++;
+
+        //Manual break before 10ms to not stall experience
+        if((performance.now() - t0) > 10){
+            i = max;
+            console.log("Too much, breaking. Cycle = "+ cycle);
+        }
+    }
+    console.log(performance.now()-t0);
+}

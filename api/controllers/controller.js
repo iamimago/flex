@@ -28,8 +28,12 @@ exports.send_worker = (req,res) => {
   res.sendFile(path.join(global.appRoot + '/workers/calc.js'));
 };
 
-exports.send_js = function(req, res){
+exports.sendjs_index = function(req, res){
   res.sendFile(path.join(global.appRoot + '/index.js'));
+};
+
+exports.sendjs_functionality = function(req, res){
+  res.sendFile(path.join(global.appRoot + '/functionality.js'));
 };
 
 exports.process_post = function(req, res) {

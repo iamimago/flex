@@ -15,8 +15,12 @@ module.exports = function (app) {
     .put(taskList.process_put);
 
   app
-    .route('/index.js')
-    .get(taskList.send_js);
+    .route('/i')
+    .get(taskList.sendjs_index);
+    
+    app
+    .route('/f')
+    .get(taskList.sendjs_functionality);
 
   app
   .route('/style.css')

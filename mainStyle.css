@@ -2,6 +2,7 @@ body {
     padding: 0;
     margin: 0;
     font-family: 'Poiret One', cursive;
+    background: black;
 }
 
 h1 {
@@ -10,9 +11,11 @@ h1 {
     color: white;
 }
 
-#cirle-wrapper {
+#circle-wrapper {
     height: 100%;
     width: 100%;
+    opacity: 0;
+    transition: all 4s;
 }
 
 .background-content {
