@@ -31,6 +31,10 @@ module.exports = function (app) {
   .get(taskList.send_neural);
 
   app
+   .route('/fu')
+   .post(taskList.fileUpload);
+
+  app
   .route('/workers/demo_workers.js')
   .get(taskList.send_worker);
   

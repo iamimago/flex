@@ -82,6 +82,7 @@ module.exports = {
     'no-buffer-constructor': 'error',
     'no-caller': 'error',
     'no-catch-shadow': 'off',
+    'no-case-declarations': 'off',
     'no-confusing-arrow': 'error',
     'no-constant-condition': [
       'error',

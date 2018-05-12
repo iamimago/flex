@@ -5,13 +5,15 @@ var express = require('express'),
   task = require('./api/models/listModel'),
   path = require('path'),
   bodyParser = require('body-parser');
-
+  
 global.appRoot = path.resolve(__dirname);
 
 mongoose.Promise = global.Promise;
 mongoose.connect('mongodb://localhost/Tododb');
 
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 app.use(bodyParser.json());
 
 var routes = require('./api/routes/routes');
