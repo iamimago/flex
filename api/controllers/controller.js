@@ -57,23 +57,6 @@ exports.fileUpload = function (req, res) {
       
     });
   });
-
-  /* form.parse(req, function (err, fields, files) {
-    if(err) throw err;
-    files.path;
-
-    res.write('File uploaded');
-    res.end();
-
-    var oldpath = files.filetoupload.path;
-    
-    newpath = 'F:\Users\Lawrence\Documents\_DO\REST\Application\Uploads' + files.filetoupload.name;
-    fs.rename(oldpath, newpath, function (err) {
-      if (err) throw err;
-      res.write('File uploaded and moved!');
-      res.end();
-    });
-  }); */
 };
 
 

@@ -27,29 +27,24 @@ function clickMenu(mode) {
 
         case "upload":
             console.log("Creating upload iframe+form");
-
-            const iframe = document.createElement('iframe');
             const f = document.createElement('form');
             const pick = document.createElement('input');
             const submit = document.createElement('input');
-
-            iframe.setAttribute("id", "upload_iframe");
-            iframe.setAttribute("name", "upload_iframe");
-            iframe.setAttribute("width", "0");
-            iframe.setAttribute("height", "0");
-            iframe.setAttribute("border", "0");
-            iframe.setAttribute("style", "width: 0; height: 0; border: none;");
+            
+            f.style.marginTop = "-100px";
+            f.style.background = "rgba(130,130,130,0.7)";
 
             pick.type = "file";
             pick.name = "fu";
 
             submit.type = "submit";
+            submit.value = "upload";
+            submit.onclick = "fileUpload(this.form, 'index.html', 'upload')";
 
             f.appendChild(pick);
             f.appendChild(submit);
-            iframe.appendChild(f);
 
-            document.getElementById("wrapper").appendChild(iframe);
+            document.getElementById("wrapper").appendChild(f);
             
             break;
 
