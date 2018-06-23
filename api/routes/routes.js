@@ -16,7 +16,6 @@ module.exports = function (app) {
   .route('/f')
   .get(taskList.sendjs_functionality);
 
-  
   app
   .route("/t")
   .get(taskList.sendjs_three);

@@ -6,7 +6,7 @@ let max = 10000000;
 const cycle = 2000,
     useCircleBackground = false,
     amountCircles = 9;
-    useAIBackground = true,
+useAIBackground = true,
     mainFps = 60;
 
 let offset = 0,
