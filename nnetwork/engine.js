@@ -1,5 +1,4 @@
 (() => {
-    // Create the XHR object to do GET to /data resource
 
     var group, camera, scene, renderer;
     

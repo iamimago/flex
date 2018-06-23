@@ -31,7 +31,66 @@ exports.sendjs_index = function (req, res) {
 
 exports.sendjs_functionality = function (req, res) {
   res.sendFile(path.join(global.appRoot + '/functionality.js'));
+<<<<<<< HEAD
 }
+=======
+};
+
+exports.process_post = function (req, res) {};
+
+exports.process_put = function (req, res) {};
+
+exports.fileUpload = function (req, res) {
+  var form = new formidable.IncomingForm();
+
+  form.parse(req, function (err, fields, files) {
+    if (err) throw err;
+    var oldpath = files.fu.path;
+    var newpath = 'C:/Users/lawre/Uploads/' + files.fu.name;
+
+    fs.rename(oldpath, newpath, function (err) {
+      if (err) throw err;
+      res.sendFile(path.join(global.appRoot + '/index.html'));
+      console.log("File should be uploaded to: " + newpath);
+      
+    });
+  });
+};
+
+
+exports.list_all_tasks = function (req, res) {
+  Task.find({}, function (err, task) {
+    if (err) res.send(err);
+    res.json(task);
+  });
+};
+
+exports.create_a_task = function (req, res) {
+  var new_task = new Task(req.body);
+  new_task.save(function (err, task) {
+    if (err) res.send(err);
+    res.json(task);
+  });
+};
+
+exports.read_a_task = function (req, res) {
+  Task.findById(req.params.taskId, function (err, task) {
+    if (err) res.send(err);
+
+    res.json(task);
+  });
+};
+
+exports.update_a_task = function (req, res) {
+  Task.findOneAndUpdate({
+      _id: req.params.taskId,
+    },
+    req.body, {
+      new: true,
+    },
+    function (err, task) {
+      if (err) res.send(err);
+>>>>>>> c65178a753bc6a1ecf13d9cf1b5f2bbe755b9a58
 
 exports.sendjs_three = function (req, res){
   res.sendFile(path.join(global.appRoot + "/jsLibs/three.min.js"))
