@@ -2,25 +2,24 @@
 module.exports = function (app) {
   var taskList = require('../controllers/controller.js');
 
-  // todoList Routes
-  app
-    .route('/tasks')
-    .get(taskList.list_all_tasks)
-    .post(taskList.create_a_task);
+  /* - Get requests -  */
 
   app
     .route('/')
-    .get(taskList.send_index)
-    .post(taskList.process_post)
-    .put(taskList.process_put);
+    .get(taskList.send_index);
 
   app
     .route('/i')
     .get(taskList.sendjs_index);
     
-    app
-    .route('/f')
-    .get(taskList.sendjs_functionality);
+  app
+  .route('/f')
+  .get(taskList.sendjs_functionality);
+
+  
+  app
+  .route("/t")
+  .get(taskList.sendjs_three);
 
   app
   .route('/style.css')
@@ -31,17 +30,18 @@ module.exports = function (app) {
   .get(taskList.send_neural);
 
   app
-   .route('/fu')
-   .post(taskList.fileUpload);
-
-  app
   .route('/workers/demo_workers.js')
   .get(taskList.send_worker);
-  
 
   app
-    .route('/tasks/:taskId')
-    .get(taskList.read_a_task)
-    .put(taskList.update_a_task)
-    .delete(taskList.delete_a_task);
+  .route('/nnetwork/engine.js')
+  .get(taskList.send_AI_engine);
+
+  app
+  .route('/bgAnims/bgAnim_1.js')
+  .get(taskList.send_bgAnim_1);
+
+
+  /* - Post requests - */
+
 };
