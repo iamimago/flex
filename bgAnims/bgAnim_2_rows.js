@@ -1,6 +1,5 @@
 (() => {
-    /* TODO:    Make a draw line function
-                Make a draw circle function (by filling pixels in a sin function)*/
+    //TODO: Remake 100k particle grid with sin waveish movement.
 
     let ctx, particle, list = [],
         man;
@@ -17,18 +16,17 @@
     }
 
     const NUM_X = 80,
-        NUM_Y = 200, 
+        NUM_Y = 200;
         oBx = 0, oBy = 0,
         eBx = w - oBx,
         eBy = h - oBy,
-        NUM_PARTICLES = NUM_X * NUM_Y;
-
-    let count = 0,
-        COLOR = 220
         dx = eBx - oBx,
         dy = eBy - oBy,
         dxf = dx / NUM_X,
-        dyf = dx / NUM_Y;
+        dyf = dx / NUM_Y,
+        NUM_PARTICLES = NUM_X * NUM_Y,
+        count = 0,
+        COLOR = 220;
 
     function init() {
         ctx = c.getContext('2d');

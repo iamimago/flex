@@ -18,6 +18,6 @@ app.use(bodyParser.json());
 var routes = require('./api/routes/routes');
 routes(app);
 
-app.listen(port, 'localhost');
+app.listen(port);
 
-console.log('RESTful API server started on: ' + port);
+console.log('server started on: ' + port);
