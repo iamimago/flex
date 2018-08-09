@@ -1,5 +1,11 @@
 (() => {
-    /* TODO:    
+    /* PROBLEMS:
+                1. Allicating two pixels at the same pixel. Pointless.
+                2. Optimize by calculating where individual objects will be, assign pixels thereafter... or something.
+                3. Current bugs are quite pointless, caused by creating too many objects. Possible to dodge the entire bug with making it game only. I think.
+    
+    
+    TODO:    
                 1. Implement Circles.
                 2. Moving circles in constant speeds
                 3. Moving circles in varrying speeds
@@ -8,14 +14,16 @@
                 5. Partial trail behind circle
                 ?x?. Collision detection between trail and circles
                 */
-               
+
     const c = document.createElement("canvas"),
         canvas_width = window.innerWidth,
-        canvas_height = innerHeight;
+        canvas_height = innerHeight
+        MAX_PIXELS = canvas_height * canvas_width;
 
     let ctx,
         particle,
         cube,
+        circle,
         list = [],
         objects = [],
         pix_count = 0,
@@ -39,6 +47,17 @@
         geometry: [],
         color: "FFFFFF",
         type: "cube",
+        memory_locations: {}
+    }
+
+    circle = {
+        x: 0,
+        y: 0,
+        radius: 0,
+        segments: 0,
+        geometry: [],
+        color: "FFFFFF",
+        type: "circle",
         memory_locations: {}
     }
 
@@ -74,11 +93,16 @@
 
                 break;
 
+            case "circle":
+                obj.geography = [{
+
+                }]
+
             default:
                 break;
         }
     }
-    let cube_obj, num_cubes_x = 50, num_cubes_y = 50;
+    let num_cubes_x = 20, num_cubes_y = 20;
 
     function init() {
         ctx = c.getContext('2d');
@@ -91,20 +115,17 @@
 
         for (let i1 = 0; i1 < num_cubes_x; i1++) {
             for(let i2 = 0; i2 < num_cubes_y; i2++){
-                cube_obj = Object.create(cube);
-                cube_obj.x = 100 + (20 * i1);
-                cube_obj.y = 100 + (20 * i2);
-                cube_obj.width = 10;
-                cube_obj.height = 10;
-    
-                update_geometry(cube_obj);
-                cube_obj.memory_locations = initSolid(cube_obj.geometry, cube_obj.color);
-    
-                objects.push(cube_obj);
+                let cube_obj = createCube(100 + 10 * i1, 100 + 10 * i2, 100, 200, "FF00FF");
+                if(cube_obj < 0){
+                    break;
+                }else{
+                    objects.push(cube_obj);
+                }
             }
         }
 
-
+        console.log(objects);
+        
         step();
         fpsCounter();
     }
@@ -114,16 +135,34 @@
     function animate() {
 
         for(let i = 0; i < objects.length; i++){
-            moveCube(Math.sin(offset) * 2 * Math.pow(-1, i % 2), Math.cos(-offset) * 2 * Math.pow(-1, i % 2) , objects[i]);
+            moveCube(Math.sin(offset) * 2, Math.cos(-offset) * 2, objects[i]);
         }
 
         offset += 0.01;
     }
 
+    function createCube(x, y, width, height, color){
+
+        let c = Object.create(cube);
+        c.x = x;
+        c.y = y; 
+        c.width = width;
+        c.height = height;
+        c.color = color;
+        update_geometry(c);
+        c.memory_locations = initSolid(c.geometry, c.color);
+
+        if(c.memory_locations == {}){
+            console.log("There was an error creating cube");
+            return -1
+        }else{
+            return c;
+        }
+
+    }
+
     let temp_x, temp_y, dif_y, dif_x;
-
     function moveCube(x, y, obj) {
-
         temp_x = obj.x;
         temp_y = obj.y;
 
@@ -147,15 +186,25 @@
     }
 
     let fpsc = 0;
-
     function fpsCounter() {
         console.log("Fps: %i, pix_count: %i", fpsc, pix_count);
         fpsc = 0;
         setTimeout(fpsCounter, 1000);
     }
 
-    let d_line_start, d_line_end, d_line_y, start_p_solid, end_p_solid;
 
+    function initCircle(midpoint, radius, segments, rgb){
+        let geography = [];
+        if(segments < 3){
+            console.log("Too few points to initiate draw circle");
+        }
+
+        for(let i = 0; i < segments; i++){
+
+        }
+    }
+
+    let d_line_start, d_line_end, d_line_y, start_p_solid, end_p_solid;
     function initSolid(points, rgb) {
         if (points.length < 3) {
             console.log("Too few points to draw a solid");
@@ -164,6 +213,9 @@
         let y_fill_list = [],
             am_p, x_length, y_length, temp, start_p, found, step_x, step_y;
 
+        //For each points[i] (which is a line), calculate diagonal of x -> dx, y -> dy. Save the diagonal in an array consisting of all diagonals
+        //Calculate for each row y, the points x_min, x_max, draw a line between x_min->x_max. Fill the shape iteratively. 
+        //Only concave shapes supported. 
         for (let i = 0; i < points.length; i++) {
             x = points[i].x;
             y = points[i].y;
@@ -189,13 +241,12 @@
             //Pythagoras theorem
             am_p = Math.sqrt(Math.pow(x_length, 2) + Math.pow(y_length, 2));
 
-            for (let step = 0; step < am_p; step++) {
-
+            for (let step = 0; step < am_p; step++) {                
                 found = 0;
                 step_x = x + Math.floor((x_length / am_p) * step);
                 step_y = y + Math.floor((y_length / am_p) * step);
-                //For each y coordinate, automatically fill in what x coordinates which should be filled in in the line.
 
+                //For each y coordinate, automatically fill in what x coordinates which should be filled in in the line.
                 for (let i2 = 0; i2 < y_fill_list.length; i2++) {
 
                     if (y_fill_list[i2].y == step_y) {
@@ -222,8 +273,14 @@
             }
         }
 
+        //Hack to get the first availible pixel
         start_p_solid = malloc_p(0);
-        //First initiation
+
+        if(start_p_solid == -1){
+            console.log("Error mallocing pixels, breaking");
+            return;            
+        }
+        
         for (let i = 0; i < y_fill_list.length; i++) {
             d_line_start = y_fill_list[i].start_p;
             d_line_end = y_fill_list[i].end_p;
@@ -253,6 +310,11 @@
 
         pix_i = malloc_p(hyp_distance);
 
+        if(pix_i == -1){
+            console.log("Error mallocing pixels, breaking");
+            return;            
+        }
+
         x_length = dx - x;
         y_length = dy - y;
 
@@ -278,21 +340,21 @@
     function malloc_p(amount) {
         let start_p = pix_count;
         let end = (pix_count + amount);
+        if(pix_count > MAX_PIXELS){
+            console.log("Max pixels: %i, reached, cannot allocate more.", MAX_PIXELS);
+            return -1;
+        }
+
         for (; pix_count < end; pix_count++) {
+            if(pix_count > MAX_PIXELS){
+                console.log("Max pixels reached, cannot allocate more.");
+                return -1;
+            }
             p = Object.create(particle);
             list[pix_count] = p;
         }
         return start_p;
     }
-
-    /**
-     * Draws out the positions of all pixels, gathered from vec_list
-     */
-    function draw() {
-
-    }
-
-
 
     /**
      * Renders the pixels onto a image, appends image to ctx. 
@@ -330,7 +392,6 @@
         //Animate pixels
         if (tog = !tog) {
             fpsc++;
-            draw();
             render();
         } else {
             animate();
