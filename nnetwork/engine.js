@@ -1,6 +1,14 @@
 (() => {
-    /* TODO:    Make a draw line function
-                Make a draw circle function (by filling pixels in a sin function)*/
+    /* TODO:    
+                1. Implement Circles.
+                2. Moving circles in constant speeds
+                3. Moving circles in varrying speeds
+                ?x?. Collision detection between trail and circles
+                4. Trail behind circle (permanent or no)
+                5. Partial trail behind circle
+                ?x?. Collision detection between trail and circles
+                */
+               
     const c = document.createElement("canvas"),
         canvas_width = window.innerWidth,
         canvas_height = innerHeight;

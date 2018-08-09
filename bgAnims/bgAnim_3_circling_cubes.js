@@ -1,6 +1,4 @@
 (() => {
-    /* TODO:    Make a draw line function
-                Make a draw circle function (by filling pixels in a sin function)*/
     const c = document.createElement("canvas"),
         canvas_width = window.innerWidth,
         canvas_height = innerHeight;
@@ -276,15 +274,6 @@
         }
         return start_p;
     }
-
-    /**
-     * Draws out the positions of all pixels, gathered from vec_list
-     */
-    function draw() {
-
-    }
-
-
 
     /**
      * Renders the pixels onto a image, appends image to ctx. 
