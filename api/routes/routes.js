@@ -36,6 +36,10 @@ module.exports = function (app) {
     .route('/bgAnims/bgAnim_1.js')
     .get(taskList.send_bgAnim_1);
 
+  app
+    .route('/bgAnims/bgAnim_2_rows_alt_1.js')
+    .get(taskList.send_bgAnim_2_rows_alt_1);
+
   /* - Post requests - */
 
 };

@@ -4,9 +4,9 @@ let max = 10000000;
 
 /* Alterable variables */
 const cycle = 2000,
-    useCircleBackground = false,
+    useOtherBg = true,
     amountCircles = 9;
-useAIBackground = true,
+    useAIBackground = false,
     mainFps = 60;
 
 let offset = 0,
@@ -47,6 +47,8 @@ let offset = 0,
         storageSupport = typeof (Storage) !== "undefined" ? console.log("---Storage supported---") : console.log("---Storage unsupported---");
 
         document.addEventListener('keydown', (event) => {
+            console.log("Hello?");
+            
             const keyName = event.key;
 
             if (keyName === 'Control') {
@@ -65,17 +67,8 @@ let offset = 0,
         }, false);
 
         initMenues();
-        if (useCircleBackground) {
-            $.getScript('bganims/bgAnim_1.js');
-            const checkLoaded = () => {
-                //bgAnim_1 variable loaded from bgAnim_1.js
-                if (typeof bgAnim_1 !== 'undefined') {
-                    bgAnim_1.initBgAnim(amountCircles);
-                } else {
-                    console.log("bgAnim_1.js not yet loaded, retrying");
-                    setTimeout(checkLoaded, 100);
-                }
-            };
+        if (useOtherBg) {
+            $.getScript('bganims/bgAnim_2_rows_alt_1.js');
             setTimeout(checkLoaded, 1);
         };
         if (useAIBackground) {

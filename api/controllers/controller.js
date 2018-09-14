@@ -40,3 +40,7 @@ exports.send_AI_engine = function (req, res) {
 exports.send_bgAnim_1 = function (req, res) {
   res.sendFile(path.join(global.appRoot + '/bgAnims/bgAnim_1.js'));
 }
+
+exports.send_bgAnim_2_rows_alt_1 = function (req, res) {
+  res.sendFile(path.join(global.appRoot + '/bgAnims/bgAnim_2_rows_alt_1.js'));
+}
