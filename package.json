@@ -1,8 +1,8 @@
 {
-  "name": "playground",
-  "version": "1.0.0",
-  "description": "Me playing with internenet stuff ",
-  "main": "index.js",
+  "name": "flex",
+  "version": "0.0.2",
+  "description": "a playground for me to develop my web development skills. every once in a while i also make some waste products which are usable.",
+  "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon server.js"
@@ -11,30 +11,22 @@
     "type": "git",
     "url": "git+https://github.com/iamimago/flex.git"
   },
-  "keywords": [],
+  "keywords": [
+    "js",
+    "html",
+    "css",
+    "development",
+    "ai",
+    "webassembly"
+  ],
   "author": "Lorentz Kinde",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/iamimago/flex/issues"
   },
   "homepage": "https://github.com/iamimago/flex#readme",
-  "devDependencies": {
-    "eslint-config-standard": "^11.0.0",
-    "eslint-plugin-import": "^2.12.0",
-    "eslint-plugin-node": "^6.0.1",
-    "eslint-plugin-promise": "^3.8.0",
-    "eslint-plugin-standard": "^3.1.0",
-    "mocha": "~2.3.3",
-    "nodemon": "^1.15.1",
-    "should": "~7.1.0",
-    "supertest": "~1.1.0"
-  },
   "dependencies": {
-    "express": "^4.16.2",
-    "formidable": "^1.2.1",
-    "mongoose": "^5.0.7",
-    "multer": "1.1.0",
-    "prettier": "^1.11.1",
-    "three-orbit-controls": "^82.1.0"
+    "express": "^4.16.3",
+    "nodemon": "^1.18.4"
   }
 }

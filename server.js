@@ -1,22 +1,12 @@
-var express = require('express'),
+const express = require('express'),
   app = express(),
   port = process.env.PORT || 4000,
-  mongoose = require('mongoose'),
-  path = require('path'),
-  bodyParser = require('body-parser');
+  path = require('path');
   
 global.appRoot = path.resolve(__dirname);
+express.static.mime.define({'application/octet-stream': ['csv']})
 
-mongoose.Promise = global.Promise;
-mongoose.connect('mongodb://localhost/Tododb');
-
-app.use(bodyParser.urlencoded({
-  extended: true
-}));
-app.use(bodyParser.json());
-
-var routes = require('./api/routes/routes');
-routes(app);
+app.use(express.static("public"));
 
 app.listen(port);
 
