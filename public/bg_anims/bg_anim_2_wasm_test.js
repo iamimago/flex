@@ -33,7 +33,7 @@
         move_factor = 5;
 
     function animate() {
-        let bbox = document.getElementsByClassName("smenu-item"), intersect_x, move_y;
+        let bbox = document.getElementsByClassName("sq_menu-item"), intersect_x, move_y;
 
         for (let i = 0; i < NUM_PARTICLES; i++) {
             p = list[i];

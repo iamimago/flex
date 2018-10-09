@@ -4,10 +4,9 @@ const express = require('express'),
   path = require('path');
   
 global.appRoot = path.resolve(__dirname);
-express.static.mime.define({'application/octet-stream': ['csv']})
 
 app.use(express.static("public"));
 
 app.listen(port);
 
-console.log('server started on: ' + port);
+console.log('Server started on port: ' + port);

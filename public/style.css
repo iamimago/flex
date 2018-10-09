@@ -83,7 +83,7 @@ h1 {
     transition: 1s;
 }
 
-.smenu-item{
+.sq_menu-item{
     text-align: center;
     width: 200px;
     height: 200px;
@@ -98,11 +98,11 @@ h1 {
     background: white;
 }
 
-.smenu-item:hover{
+.sq_menu-item:hover{
     background: rgba(172, 172, 172, 0.233);
 }
 
-.smenu-item p{
+.sq_menu-item p{
     position: relative;
     margin: 0;
     padding: 0;

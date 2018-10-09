@@ -1,13 +1,13 @@
 /* Diverse functionality for the menues and such */
 
 const menu = document.getElementById("square-menu");
-const menuList = document.getElementsByClassName("smenu-item");
+const menuList = document.getElementsByClassName("sq_menu-item");
 const border = document.getElementById("wrapper").getBoundingClientRect();
 let tw;
 
 
 function initMenues() {
-    const menuList = document.getElementsByClassName("smenu-item");
+    const menuList = document.getElementsByClassName("sq_menu-item");
 
     for (let i = 0; i < menuList.length; i++) {
         const el = menuList[i];
@@ -32,7 +32,7 @@ function clickMenu(mode) {
 
     switch (mode) {
         case "home":
-            if (menuList[0].dataset.toggle == "max") {
+            if (menuList[0].dataset.max) {
                 minMenu();
             } else {
                 maxMenu();
@@ -48,25 +48,6 @@ function clickMenu(mode) {
             break;
 
         case "upload":
-            console.log("Creating upload iframe+form");
-            const f = document.createElement('form');
-            const pick = document.createElement('input');
-            const submit = document.createElement('input');
-            
-            f.style.marginTop = "-100px";
-            f.style.background = "rgba(130,130,130,0.7)";
-
-            pick.type = "file";
-            pick.name = "fu";
-
-            submit.type = "submit";
-            submit.value = "upload";
-            submit.onclick = "fileUpload(this.form, 'index.html', 'upload')";
-
-            f.appendChild(pick);
-            f.appendChild(submit);
-
-            document.getElementById("wrapper").appendChild(f);
             
             break;
 
@@ -115,7 +96,7 @@ function maxMenu() {
         i.children[0].innerHTML = i.dataset.type.slice(0, 1);
         i.style.height = "200px";
         i.style.width = "200px";
-        i.dataset.toggle = 'max';
+        i.dataset.max = '1';
         i.children[0].innerHTML = i.dataset.type;
         i.classList.remove('minMenu');
     }
