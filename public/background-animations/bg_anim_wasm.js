@@ -119,19 +119,10 @@
             }
         }
         //Easymode: (<script src="/web-assembly/test.js"></script> in index.html
-
-        setTimeout(()=>{
-            Module.onRuntimeInitialized = function() {
-                console.log(Module._fib())
-            }
-        }, 100);
-
-
-        /* Hardmode:
-        var importObject = { imports: { imported_func: arg => console.log(arg) } };
-
-        WebAssembly.instantiateStreaming(fetch('/web-assembly/bganim_2_calc.wasm'), importObject)
-        .then(obj => obj.instance.exports.exported_func()); */
+        
+        Module.onRuntimeInitialized = function() {
+            console.log(Module._fib())
+        }
 
         step();
         //fpsCounter();
