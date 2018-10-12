@@ -1,0 +1,59 @@
+Resources:
+
+It should use canvas, requestAnimationFrame, thingie.
+
+Development milestones:
+    1a. Implement drawing function
+        a. Moveable circle
+            * Automoving, as in the other thing
+            * Turning with A and D
+        b. Tail of moveable circle
+            * Fixed size
+            * Dynamic size
+        c. Static objects
+    2a. Implement item detection
+    -- Engine should be done enough
+
+    1b. Implement point system
+        a. Back end only. Console.log it.
+    2b. Implement "apples" which extends tail on collision
+    3b. Implement game over when player intersects with other player
+    -- Game should be done enough
+
+    1c. Construct NN (In wasm?) <- More research needed. I know where to look.
+        a. Implement neural network node-array structure
+        b. Implement backpropagation
+        c. Implement live updating
+    2c. Construct evolutionary behavior with cycles (lack of info because of lack of knowledge)
+    3c. Construct simple system where serve feeds the best NN to client
+        a. Construct JSON submission server -> client -> client plays -> submitt to server.
+    -- AI and backend should be done enough now
+    
+    1d. Optimize enough for this to actually run smoothly in 60 fps. It is possible. You're just not smart enough. 
+    --- flex 0.1 is now done!
+
+    Graphical development update (if i get here):
+
+ISSUES: How does the NN get the trail data? 
+Cycle:
+    1. Calculate positions
+        a. Feed data into nn
+            * this.x
+            * this.y
+            * this.trail (somehow)
+            * food.x
+            * food.y
+            * oponent.x
+            * oponent.y
+            * oponent.trail (somehow)
+        b. Retrieve decision for both ai's 
+    2. Draw objects
+    3. Repeate 1. until one player intersects with wall or other players trail. 
+    4. Submit winner to server, save new nn, restart 1.
+
+Implementations:
+    Step 1a.
+        Two workers, one for 60 fps, one for movement?
+        Yeah. For practice, if nothing else.
+
+        Plan for today: Implement web worker which draws a circle which automoves, and turns as anticipated. 
