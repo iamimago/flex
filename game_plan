@@ -5,10 +5,10 @@ It should use canvas, requestAnimationFrame, thingie.
 Development milestones:
     1a. Implement drawing function
         a. Moveable circle
-            * Automoving, as in the other thing
-            * Turning with A and D
+            * Automoving, as in the other thing     ==DONE==
+            * Turning with A and D                  ==DONE==
         b. Tail of moveable circle
-            * Fixed size
+            * Fixed size                            
             * Dynamic size
         c. Static objects
     2a. Implement item detection
