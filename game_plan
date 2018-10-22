@@ -11,13 +11,13 @@ Development milestones:
             * Fixed size                            ==DONE==
             * Dynamic size                          ==DONE== 
         c. Static objects                           ==DONE==
-    2a. Implement item detection                    ==ONGOING==
+    2a. Implement item detection                    ==DONE==
     -- Engine should be done enough
 
-    1b. Implement point system
-        a. Back end only. Console.log it.
-    2b. Implement "apples" which extends tail on collision
-    3b. Implement game over when player intersects with other player
+    1b. Implement point system                      ==DONE==
+        a. Back end only. Console.log it.           ==DONE==
+    2b. Implement "apples" which extends tail on collision  ==DONE==
+    3b. Implement game over when player intersects with other player    ==DONE==
     -- Game should be done enough
 
     1c. Construct NN (In wasm?) <- More research needed. I know where to look.
