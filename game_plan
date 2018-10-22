@@ -8,10 +8,10 @@ Development milestones:
             * Automoving, as in the other thing     ==DONE==
             * Turning with A and D                  ==DONE==
         b. Tail of moveable circle
-            * Fixed size                            
-            * Dynamic size
-        c. Static objects
-    2a. Implement item detection
+            * Fixed size                            ==DONE==
+            * Dynamic size                          ==DONE== 
+        c. Static objects                           ==DONE==
+    2a. Implement item detection                    ==ONGOING==
     -- Engine should be done enough
 
     1b. Implement point system
@@ -56,4 +56,8 @@ Implementations:
         Two workers, one for 60 fps, one for movement?
         Yeah. For practice, if nothing else.
 
-        Plan for today: Implement web worker which draws a circle which automoves, and turns as anticipated. 
+        No. To both of above. 
+
+Increment tail:
+    tail.max_tail + increased length.
+    (tail.curr_segment - 1 + tail.old_max_length) % tail.old_max_length = end segment
