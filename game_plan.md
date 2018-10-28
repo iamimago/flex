@@ -26,10 +26,13 @@ It should use canvas, tensorflow.js
 
 ## Tensorflow implementation
 1. Implement tensorflow.js
-    1. Implement neural network node-array structure                ==UNNEEDED==
-    2. Implement backpropagation                                    ==UNNEEDED==
-2. Construct evolutionary behavior with cycles (lack of info because of lack of knowledge)
-3. Construct simple system where server feeds the best NN to client
+    1. Basic feed forward network
+    2. Reinforcement learning
+    3. Genetic algorithm 
+        1. Using modified scaledown versions of the game running in the background
+        2. Still using the same pixel logic for item detection, just out of view
+        3. Implement TCP-like congestion control for background genetic algorithms
+2. Construct simple system where server feeds the best NN to client
     1. Construct JSON submission server -> client -> client plays -> submitt to server.
 
 -- AI and backend should be done enough now

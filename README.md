@@ -65,4 +65,4 @@ It should use canvas, tensorflow.js
 
 ## Notes
 ISSUES: How does the NN get the trail data? 
-SOLUTION: It doesn't. 
+SOLUTION: It doesn't. It just tries to stay alive for dear life by identifying everything as a threat 
