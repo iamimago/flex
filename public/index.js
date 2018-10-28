@@ -26,6 +26,7 @@
         p_b,
         p_a,
         ctx_img_data,
+        midpoint_img_data,
         reset;
 
     state = {
@@ -68,10 +69,9 @@
         p.tail = temp_tail;
     }
 
-    function logic() {
-        reset = 0;
 
-        //Check specific area, dont retrieve entire screen you bozo. I'll fix later.
+    function logic() {
+        //Object detection and movement of every object
         for (const obj of objects) {
             if (obj.state == state.inactive) continue;
             //Flags are to determine intersections of other objects. At the moment the flags are only used to see if the object is out of bounds.
@@ -107,24 +107,26 @@
                                 Much more efficient than manually doing logic checks for all the
                                 potential tail sections and so forth. It adds 2 pixels to the radius due to
                                 canvas adding some sort of bloom effect. Costs a bit of accuracy, but close enough.
-
-                                TODO: Fix the lesser sized getImageData problem.
                             */
-                            ctx_img_data = (ctx.getImageData(obj.x - radius - 5, obj.y - radius + - 5, obj.x + radius + 5, obj.y + radius + 5)).data;
-                            for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
-                                pixel_pointer_x = next_x + (Math.cos(((180 / ~~(Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + 2));
-                                pixel_pointer_y = next_y + (Math.sin(((180 / ~~(Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + 2));
+                            let buffer = 3;
 
-                                pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * w)) * 4;
+                            ctx_img_data = (ctx.getImageData(obj.x - obj.radius - buffer, obj.y - obj.radius - buffer, (obj.radius + buffer) * 2, (obj.radius + buffer) * 2)).data;
+
+                            midpoint_img_data = obj.radius + buffer;
+                            for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
+                                pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+                                pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+
+                                pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
                                 p_r = ctx_img_data[pixel_pointer];
                                 p_g = ctx_img_data[pixel_pointer + 1];
                                 p_b = ctx_img_data[pixel_pointer + 2];
                                 p_a = ctx_img_data[pixel_pointer + 3];
 
-                                if (p_r != 0 || p_g != 0 || p_b != 0) {
+                                if (p_r > 0 || p_g > 0 || p_b > 0) {
                                     if (p_g > 200) {
                                         //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
-                                        increase_tail(obj, 50);
+                                        increase_tail(obj, 500);
                                         for (const mb_apple of objects) {
                                             if (mb_apple.type == "apple") {
                                                 mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
@@ -148,6 +150,10 @@
                                 obj.y = next_y
                             }
 
+                            if (collision_flag || b_flag_x || b_flag_y) {
+                                obj.state = state.dead;
+                            }
+
                             //If the object has moved, draw tail.
                             if (moved) {
                                 //Lines from origo +- Pi/2 rads * radius, which then fills a solid in the draw funciton.
@@ -165,7 +171,6 @@
 
                         case state.dead:
                             console.log("Trying to move dead object:", obj.id);
-
                             break;
 
                         default:
@@ -191,13 +196,18 @@
             }
         }
 
+        let restart_flag = 0;
         //Check if anyone died on their move.
         for (const obj of objects) {
             if (obj.state == state.dead) {
                 //TODO: Fix point system and stuff.
-                restart_game();
-                reset = 1;
+                restart_flag = 1;
             }
+        }
+
+        if (restart_flag) {
+            reset = 1;
+            restart_game();
         }
     }
 
@@ -219,7 +229,7 @@
                     //Draw tail
                     ctx.beginPath();
 
-                    //Hack to adjust for increment in logic (ugly)
+                    //Hack to adjust for increment in logic (ugly, but due to modular tail section it had to be done, also to keep draw and logic separate)
                     let start = obj.tail_curr_segment - 1;
                     let count_thing = start;
 
@@ -268,6 +278,8 @@
         if (!reset) {
             draw();
             window.requestAnimationFrame(step);
+        } else {
+            reset = 0;
         }
     }
 
@@ -349,14 +361,35 @@
         window.requestAnimationFrame(step);
     }
 
-    function init() {
-        /* if (typeof(Worker) !== "undefined") {
-            load_workers();
-        } else {
-            console.log("Web worker not supported. Loading alternative background:");
-            //TODO: Load alternative background.
-        } */
+    function init_tensorflow() {
+        // Define a model for linear regression.
+        const model = tf.sequential();
+        model.add(tf.layers.dense({
+            units: 1,
+            inputShape: [1]
+        }));
 
+        // Prepare the model for training: Specify the loss and the optimizer.
+        model.compile({
+            loss: 'meanSquaredError',
+            optimizer: 'sgd'
+        });
+
+        // Generate some synthetic data for training.
+        const xs = tf.tensor2d([1, 2, 3, 4], [4, 1]);
+        const ys = tf.tensor2d([1, 3, 5, 7], [4, 1]);
+
+        // Train the model using the data.
+        model.fit(xs, ys, {
+            epochs: 10
+        }).then(() => {
+            // Use the model to do inference on a data point the model hasn't seen before:
+            // Open the browser devtools to see the output
+            model.predict(tf.tensor2d([5], [1, 1])).print();
+        });
+    }
+
+    function init() {
         w = window.innerWidth;
         h = window.innerHeight;
 
@@ -368,8 +401,8 @@
         console.log("-- Start --");
         document.getElementsByClassName('background-container')[0].appendChild(canvas);
         add_event_listeners();
-
-        restart_game();
+        init_tensorflow();
+        // restart_game();
     }
 
     init();
