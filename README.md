@@ -37,6 +37,9 @@ It will use canvas, tensorflow.js
         1. Using modified scaledown versions of the game running in the background
         2. Still using the same pixel logic for item detection, just out of view
         3. Implement TCP-like congestion control for background genetic algorithms
+
+## Server implementation
+1. Design better plan. Convert to other language than node for practice.
 2. Construct simple system where server feeds the best NN to client
     1. Construct JSON submission server -> client -> client plays -> submitt to server.
 
