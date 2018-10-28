@@ -1,7 +1,9 @@
 # project flex
 
 ## idea
-Continious development of different web areas in order to become a better programmer by constantly having something to do. Current project is implementing an AI achtung die curve game which is being played by an ai engine consisting of two itterations of a slightly different modell, which competes against each other to see which one is the best. Every viewer of the website should then have this game played for them (basically distributed computing system) served by the latest and "best" ai model.
+Flex is a continious development of different web areas in order to become a better programmer by constantly having something to do. 
+
+Current project is implementing an AI achtung die curve game which is being played by an ai engine consisting of two itterations of a slightly different modell, which competes against each other to see which one is the best. Every viewer of the website should then have this game played for them (basically distributed computing system) served by the latest and "best" ai model.
 
 ## Resources:
 
@@ -37,6 +39,21 @@ It should use canvas, tensorflow.js
 2. Construct evolutionary behavior with cycles (lack of info because of lack of knowledge)
 3. Construct simple system where server feeds the best NN to client
     1. Construct JSON submission server -> client -> client plays -> submitt to server.
+
+## Problems:
+1. How do I create insentive for the AI to stay alive/gain points? Somethign with evolutionary development... 
+
+### Input v 1
+1. Array of raytracers. Odd number of them, one always straight ahead, spanning from 0 - 180 deg, where 90 deg is the traveling direction
+    1. Distance to object which kills snek (wall, tails)
+2. Distance to apple
+
+### Input v 2 (cooler, maybe more effective?)
+1. Array of "sonar" circles spawning from snek origo
+    1. Fixed size on different distances, 
+        1. -1 = no intersection, 
+        2. 0-180 = degree where intersection was registered
+    2. Dynamic size, pulsating out from snek origo
 
 -- AI and backend should be done enough now
 
