@@ -45,8 +45,8 @@ It should use canvas, tensorflow.js
 
 ### Input v 1
 1. Array of raytracers. Odd number of them, one always straight ahead, spanning from 0 - 180 deg, where 90 deg is the traveling direction
-    1. Distance to object which kills snek (wall, tails)
-2. Distance to apple
+    1. Distance to object where snek is kill
+2. Distance to apple (simply pythagoras theorem to apple x/y)
 
 ### Input v 2 (cooler, maybe more effective?)
 1. Array of "sonar" circles spawning from snek origo
