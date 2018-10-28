@@ -20,6 +20,7 @@ It should use canvas, tensorflow.js
         * Dynamic size                                              ==DONE== 
     3. Static objects                                               ==DONE==
 2. Implement item detection                                         ==DONE==
+
 -- Engine should be done enough                 
 
 3. Implement point system                                          ==DONE==
