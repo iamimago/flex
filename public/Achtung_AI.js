@@ -7,16 +7,9 @@
         canvas,
         ctx,
         objects = [],
-        apple_list = [],
         entity,
-        state,
         next_x,
         next_y,
-        b_flag_x,
-        b_flag_y,
-        apple_flag,
-        collision_flag,
-        moved,
         pixel_pointer,
         pixel_pointer_x,
         pixel_pointer_y,
@@ -26,64 +19,72 @@
         p_a,
         ctx_img_data,
         midpoint_img_data,
-        reset;
+        reset,
+        game_mode,
+        probe_x, probe_y;
 
-    const SENSOR_ANGLE = 150;
-
-    state = {
-        inactive: -1,
-        moving: 0,
-        frozen: 1,
-        dead: 2
-    }
+    const SENSOR_ANGLE = 160,
+        PLAYERS = 1,
+        APPLES = 1,
+        COLORS = ["red", "blue", "purple", "yellow", "orange"],
+        DEBUG = 1,
+        DEBUG_POS_X = [400, 2 * window.innerWidth / 8],
+        DEBUG_ANGLE = [0, 180],
+        MODES = {
+            PLAYER: 0,
+            AI: 1
+        },
+        STATE = {
+            INACTIVE: -1,
+            MOVING: 0,
+            FROZEN: 1,
+            DEAD: 2
+        },
+        DEFAULT_TAIL_LENGTH = 200,
+        FPS_REPORT_FREQUENCY = 10;
 
     entity = {
         id: -1,
         type: "none",
-        state: state.inactive,
+        STATE: STATE.INACTIVE,
         move_left: 0,
         move_right: 0,
         x: -1,
         y: -1,
         angle: -1,
         radius: -1,
+        bounding_box: [],
         linear_sensors: [],
-        sensor_amount: 5,
+        sensor_amount: 3,
         tail: [],
         tail_curr_segment: 0,
         tail_length: -1,
         color: 'blue'
     }
 
-    function init_sensors(obj, deg){
-        let start_angle = modular_angle_addition(obj.angle, -SENSOR_ANGLE),
-            angle_segment = SENSOR_ANGLE/obj.sensor_amount;     
-            
-        for(let i = 0; i < obj.sensor_amount; i++){
-            obj.linear_sensors[i] = {
-                deg: modular_angle_addition(start_angle, angle_segment * i),
-                hit_length: -1
-            };
-        }
-    
-    }
-
-    function modular_angle_addition(start, term){
-        
+    function modular_angle_addition(start, term) {
         let ret = start + term;
-        if(ret > 360){
+        if (ret > 360) {
             ret = ret % 360;
-        }else if(ret < 0){
-            ret = ret + 360; 
+        } else if (ret < 0) {
+            ret = ret + 360;
+        } else if(ret == 360){
+            ret = 0;
         }
         return ret;
     }
 
+    function deg_to_rad(deg){
+        return (180 / (Math.PI)) * deg;
+    }
+
+    function pause_log() {
+        console.log(objects);
+        //console.log(objects[0].linear_sensors);
+        alert("Paused");
+    }
+
     function increase_tail(p, am) {
-        if (p.type != "player") {
-            console.log("dis aint has no tail yo, gtfo. Yeah. This is my idea of an assertion clause.");
-            return 1;
-        }
         let end_tail = p.tail_curr_segment;
         end_tail >= p.tail_curr_segment ? 0 : end_tail;
 
@@ -101,27 +102,57 @@
         //Only updates one segment per draw to make it more efficient, cycles through list
         obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
         obj.tail[obj.tail_curr_segment] = {
-            x0: (Math.cos((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.x,
-            x1: (Math.cos((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.x,
-            y0: (Math.sin((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.y,
-            y1: (Math.sin((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.y
+            x0: (Math.cos((obj.deg + 90) * (Math.PI / 180))) * obj.radius + obj.x,
+            x1: (Math.cos((obj.deg - 90) * (Math.PI / 180))) * obj.radius + obj.x,
+            y0: (Math.sin((obj.deg + 90) * (Math.PI / 180))) * obj.radius + obj.y,
+            y1: (Math.sin((obj.deg - 90) * (Math.PI / 180))) * obj.radius + obj.y
         };
         obj.tail_curr_segment++;
     }
 
-    function update_sensors(obj){
+    function update_sensors(obj, deg) {
+        let p_counter = 0, hit = 0, i = 0;
+
         obj.linear_sensors.forEach(sensor => {
-            sensor.deg 
+            sensor.deg += deg;
+
+            hit = 0;
+            p_counter = 0;
+            probe_x = obj.x + obj.radius * Math.cos(deg_to_rad(sensor.deg)) * 1.5;
+            probe_y = obj.y + obj.radius * Math.sin(deg_to_rad(sensor.deg)) * 1.5;
+            let foo_counter = 0;
+            while(probe_x > 0 && probe_y > 0 && probe_x < w && probe_y < h && !hit){
+                //ctx_img_data = (ctx.getImageData(~~probe_x, ~~probe_y, 1, 1)).data;
+                
+                p_r = ctx_img_data[0];
+                p_g = ctx_img_data[1];
+                p_b = ctx_img_data[2];
+                p_a = ctx_img_data[3];
+                if(p_r > 5 || p_g > 5 || p_b > 5){
+                    sensor.hit_length = p_counter;
+                    hit = 1;
+                }
+                probe_x += Math.cos(deg_to_rad(sensor.deg));
+                probe_y += Math.sin(deg_to_rad(sensor.deg));
+                p_counter++;
+                foo_counter++;
+            }
+            /* console.log({probe_x, probe_y, foo_counter});
+            pause_log(); */
         });
     }
 
     function collision_detection(obj, next_x, next_y) {
+        let b_flag_x = 0,
+            b_flag_y = 0,
+            apple_flag = 0,
+            collision_flag = 0;
         //Out of bounds calculations.
         if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) b_flag_x = 1;
         if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) b_flag_y = 1;
 
         if (b_flag_x | b_flag_y) {
-            obj.state = state.dead;
+            obj.state = STATE.DEAD;
         }
 
         /*
@@ -142,28 +173,35 @@
 
         midpoint_img_data = obj.radius + buffer;
         for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
-            pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
-            pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+            if (!collision_flag) {
+                pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.deg - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+                pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.deg - 90) * (Math.PI / 180)) * (obj.radius + buffer));
 
-            pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
-            p_r = ctx_img_data[pixel_pointer];
-            p_g = ctx_img_data[pixel_pointer + 1];
-            p_b = ctx_img_data[pixel_pointer + 2];
-            p_a = ctx_img_data[pixel_pointer + 3];
+                pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
+                p_r = ctx_img_data[pixel_pointer];
+                p_g = ctx_img_data[pixel_pointer + 1];
+                p_b = ctx_img_data[pixel_pointer + 2];
+                p_a = ctx_img_data[pixel_pointer + 3];
 
-            if (p_r > 0 || p_g > 0 || p_b > 0) {
-                if (p_g > 200) {
-                    //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
-                    increase_tail(obj, 50);
-                    for (const mb_apple of objects) {
-                        if (mb_apple.type == "apple") {
-                            mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
-                            mb_apple.y = (mb_apple.radius + Math.random() * h) - 2 * mb_apple.radius;
-                            mb_apple.state = state.frozen;
+                if (p_r > 0 || p_g > 0 || p_b > 0) {
+                    console.log({p_r, p_g, p_b});
+                    
+                    if (p_g > 200) {
+                        console.log(`Object: ${obj.id} has collided with apple.`);
+                        //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
+                        increase_tail(obj, 50);
+                        for (const mb_apple of objects) {
+                            if (mb_apple.type == "apple") {
+                                mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
+                                mb_apple.y = (mb_apple.radius + Math.random() * h) - 2 * mb_apple.radius;
+                                mb_apple.state = STATE.FROZEN;
+                            }
                         }
+                    } else {
+                        console.log(`Object: ${obj.id} has collided with danger.`);
+
+                        collision_flag = 1;
                     }
-                } else {
-                    collision_flag = 1;
                 }
             }
         }
@@ -176,7 +214,7 @@
         }
 
         if (collision_flag || b_flag_x || b_flag_y) {
-            obj.state = state.dead;
+            obj.state = STATE.DEAD;
             return 0;
         } else {
             return 1;
@@ -186,47 +224,56 @@
     function logic() {
         //Object detection and movement of every object
         for (const obj of objects) {
-            if (obj.state == state.inactive) continue;
+            if (obj.state == STATE.INACTIVE) continue;
             //Flags are to determine intersections of other objects. At the moment the flags are only used to see if the object is out of bounds.
-            let b_flag_x = 0, b_flag_y = 0, apple_flag = 0, collision_flag = 0, moved = 0, angle_change;
+            let moved = 0,
+                angle_change = 0;
             switch (obj.type) {
                 case "player":
                     switch (obj.state) {
-                        case state.moving:
+                        case STATE.MOVING:
 
                             //If the user has flagged to move to the left/right, increase/decrease angle.
-                            if (obj.move_left) angle_change = -1;
-                            if (obj.move_right) angle_change = 1;
+                            if (obj.move_left) {
+                                angle_change = -1;
+                            } else if (obj.move_right) {
+                                angle_change = 1;
+                            } else {
+                                angle_change = 0;
+                            }
+
+                            obj.deg = obj.deg + angle_change;
+
                             //Always calculate the next x/y position. The position is the origo of the circle.
-                            next_x = obj.x + Math.cos(obj.angle * (Math.PI / 180));
-                            next_y = obj.y + Math.sin(obj.angle * (Math.PI / 180));
+                            next_x = obj.x + Math.cos(obj.deg * (Math.PI / 180));
+                            next_y = obj.y + Math.sin(obj.deg * (Math.PI / 180));
                             moved = collision_detection(obj, next_x, next_y);
 
                             //If the object has moved, draw tail.
                             if (moved) {
                                 update_tail(obj);
-                                update_sensors(obj);
+                                update_sensors(obj, angle_change);
                             }
                             break;
 
-                        case state.dead:
-                            console.log("Trying to move dead object:", obj.id);
+                        case STATE.DEAD:
+                            console.log("Trying to move DEAD object:", obj.id);
                             break;
 
                         default:
-                            console.log("Trying to move inactive player:", obj.id);
+                            console.log("Trying to move INACTIVE player:", obj.id);
                             break;
                     }
                     break;
 
                 case "apple":
                     switch (obj.state) {
-                        case state.frozen:
+                        case STATE.FROZEN:
                             //The apple is stationary, no logic needed.
                             break;
 
                         default:
-                            console.log("Trying to move inactive apple:", obj.id);
+                            console.log("Trying to move INACTIVE apple:", obj.id);
                             break;
                     }
                     break;
@@ -236,18 +283,16 @@
             }
         }
 
-        let restart_flag = 0;
+        let game_over_flag = 0;
         //Check if anyone died on their move.
         for (const obj of objects) {
-            if (obj.state == state.dead) {
-                //TODO: Fix point system and stuff.
-                restart_flag = 1;
+            if (obj.state == STATE.DEAD) {
+                game_over_flag = 1;
             }
         }
 
-        if (restart_flag) {
+        if (game_over_flag) {
             reset = 1;
-            restart_game();
         }
     }
 
@@ -271,23 +316,25 @@
 
                     //Hack to adjust for increment in logic (ugly, but due to modular tail section it had to be done, also to keep draw and logic separate)
                     let start = obj.tail_curr_segment - 1;
-                    let count_thing = start;
+                    let t_h_c = start; //Tail_Help_Counter, nothing else, dopehead. 
 
-                    ctx.moveTo(obj.tail[count_thing].x0, obj.tail[count_thing].y0);
+                    if (t_h_c < 0) break;
+
+                    ctx.moveTo(obj.tail[t_h_c].x0, obj.tail[t_h_c].y0);
 
                     for (let i = 0; i < obj.tail_length - 1; i++) {
-                        count_thing - 1 < 0 ? count_thing = obj.tail_length - 1 : count_thing--;
-                        if (obj.tail[count_thing] == null) {
+                        t_h_c - 1 < 0 ? t_h_c = obj.tail_length - 1 : t_h_c--;
+                        if (obj.tail[t_h_c] == null) {
                             continue;
                         }
-                        ctx.lineTo(obj.tail[count_thing].x0, obj.tail[count_thing].y0);
+                        ctx.lineTo(obj.tail[t_h_c].x0, obj.tail[t_h_c].y0);
                     }
                     for (let i = 0; i < obj.tail_length - 1; i++) {
-                        count_thing = (count_thing + 1) % obj.tail_length;
-                        if (obj.tail[count_thing] == null) {
+                        t_h_c = (t_h_c + 1) % obj.tail_length;
+                        if (obj.tail[t_h_c] == null) {
                             continue;
                         }
-                        ctx.lineTo(obj.tail[count_thing].x1, obj.tail[count_thing].y1);
+                        ctx.lineTo(obj.tail[t_h_c].x1, obj.tail[t_h_c].y1);
                     }
 
                     ctx.closePath();
@@ -307,32 +354,60 @@
                     break;
 
                 default:
-                    console.log("Trying to draw inactive obj:", obj);
+                    console.log("Trying to draw INACTIVE obj:", obj);
                     break;
             }
         }
     }
 
+    let fps_list = [], fps_report = 0, fps=0;
+    function fps_counter(){
+        let sum = 0, avr = 0;
+        setInterval(() => {
+            fps_list.push(fps);
+            fps_report++;
+            if(fps_report == FPS_REPORT_FREQUENCY){
+                for(let i = 0; i < fps_list.length; i++){
+                    sum += fps_list[i];
+                }
+                avr = sum / fps_report;
+                console.log(`Avr fps ${FPS_REPORT_FREQUENCY} sec: ${avr}`);
+                fps_report = 0;
+                fps_list.length = 0;
+                avr = 0;
+                sum = 0;
+            }
+            fps = 0;
+        }, 1000);
+    }
+
+    let first_run = 1;
     function step() {
+        fps++;
+        if(first_run){
+            draw();
+            first_run = 0;
+        }
         logic();
         if (!reset) {
             draw();
             window.requestAnimationFrame(step);
-        } else {
-            reset = 0;
+        }else{
+            game_over();
+            console.log("Game over!");
         }
     }
 
-    function add_player(list, id, type, state, move_left, move_right, x, y, deg, color, radius, tail_length) {
+    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, color, radius, tail_length) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
-        p.state = state;
+        p.state = STATE;
         p.move_left = move_left;
         p.move_right = move_right;
         p.x = x;
         p.y = y;
-        p.angle = deg;
+        p.deg = deg;
         p.color = color;
         p.radius = radius;
         p.tail = [];
@@ -341,25 +416,23 @@
         list.push(p);
     }
 
-    function add_static_obj(id, type, state, x, y, color, radius) {
+    function add_static_obj(list, id, type, STATE, x, y, color, radius) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
-        p.state = state;
+        p.state = STATE;
         p.x = x;
         p.y = y;
         p.color = color;
         p.radius = radius;
-        objects.push(p);
+        list.push(p);
     }
 
     function add_event_listeners() {
         document.addEventListener('keydown', (event) => {
             const keyName = event.key;
             if (keyName == 'p') {
-                console.log(objects[0].linear_sensors);
-                
-                alert('Paused script');
+                pause_log();
             }
             if (keyName == 'a') {
                 objects[0].move_left = true;
@@ -389,16 +462,95 @@
         }, false);
     }
 
-    function restart_game() {
-        objects = [];
-        //Red
-        add_player(objects, 0, "player", state.moving, 0, 0, w / 4, h / 2, 0, "#113add", 10, 20);
-        //Blue
-        add_player(objects, 1, "player", state.moving, 0, 0, 3 * w / 4, h / 2, 180, "#dd113a", 10, 20);
-        //Apple
-        add_static_obj(2, "apple", state.frozen, w / 2, h / 2, "#3add11", 5);
+    function init_sensors(obj, deg) {
+        let angle_segment = SENSOR_ANGLE / obj.sensor_amount,
+            start_angle = modular_angle_addition(deg, -(angle_segment * Math.floor(obj.sensor_amount/2)));
+
+        for (let i = 0; i < obj.sensor_amount; i++) {
+            obj.linear_sensors[i] = {
+                deg: modular_angle_addition(start_angle, angle_segment * i),
+                hit_length: -1
+            };
+        }
+
+    }
+
+    function init_game(players, apples) {
+        let id = 0;
+        for (let i = 0; i < players; i++) {
+            if (DEBUG) {
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, COLORS[i], 10, DEFAULT_TAIL_LENGTH);
+            } else {
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, colors[i], 10, DEFAULT_TAIL_LENGTH);
+            }
+            id++;
+        }
+
+        for (let i = 0; i < apples; i++) {
+            if (DEBUG) {
+                add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5);
+            } else {
+                add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5);
+            }
+            id++;
+        }
+
+        start_game();
+    }
+
+    function reset_positions() {
+        let i = 0;
+        for (; i < PLAYERS; i++) {
+            objects[i].state = STATE.MOVING;
+            objects[i].tail.length = 0;
+            objects[i].tail_curr_segment = 0;
+            objects[i].tail_length = DEFAULT_TAIL_LENGTH;
+            if (DEBUG) {
+                objects[i].x = DEBUG_POS_X[i];
+                objects[i].deg = DEBUG_ANGLE[i];
+            } else {
+                objects[i].x = Math.random() * w;
+                objects[i].y = Math.random() * h;
+            }
+        }
+
+        let n = i + APPLES;
+        for (; i < n; i++) {
+            objects[i].x = Math.random() * w;
+            objects[i].y = Math.random() * h;
+        }
+    }
+
+    function end_screen() {
+        //TODO
+    }
+
+    function post_processing_ai() {
+        //TODO
+    }
+
+    function game_over() {
+        if (game_mode = MODES.PLAYER) {
+            end_screen();
+        } else if (game_mode = MODES.AI) {
+            post_processing_ai();
+            restart_game();
+        } else {
+            console.log("game_mode error in game_over");
+
+        }
+    }
+
+    function start_game() {
         window.requestAnimationFrame(step);
     }
+
+    function restart_game(){
+        reset_positions();
+        reset = 0;
+        window.requestAnimationFrame(step);
+    }
+
 
     function init_tensorflow() {
         // Define a model for linear regression.
@@ -432,6 +584,8 @@
         w = window.innerWidth;
         h = window.innerHeight;
 
+        game_mode = MODES.AI;
+
         canvas = document.createElement("canvas");
         canvas.width = w;
         canvas.height = h;
@@ -440,8 +594,9 @@
         console.log("-- Start --");
         document.getElementsByClassName('background-container')[0].appendChild(canvas);
         add_event_listeners();
+        fps_counter();
         //init_tensorflow();
-        restart_game();
+        init_game(PLAYERS, APPLES);
     }
 
     init();
