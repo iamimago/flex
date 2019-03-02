@@ -2,8 +2,7 @@
 'use strict';
 
 (() => {
-    let logics,
-        w,
+    let w,
         h,
         canvas,
         ctx,
@@ -29,6 +28,8 @@
         midpoint_img_data,
         reset;
 
+    const SENSOR_ANGLE = 150;
+
     state = {
         inactive: -1,
         moving: 0,
@@ -46,10 +47,36 @@
         y: -1,
         angle: -1,
         radius: -1,
+        linear_sensors: [],
+        sensor_amount: 5,
         tail: [],
         tail_curr_segment: 0,
         tail_length: -1,
         color: 'blue'
+    }
+
+    function init_sensors(obj, deg){
+        let start_angle = modular_angle_addition(obj.angle, -SENSOR_ANGLE),
+            angle_segment = SENSOR_ANGLE/obj.sensor_amount;     
+            
+        for(let i = 0; i < obj.sensor_amount; i++){
+            obj.linear_sensors[i] = {
+                deg: modular_angle_addition(start_angle, angle_segment * i),
+                hit_length: -1
+            };
+        }
+    
+    }
+
+    function modular_angle_addition(start, term){
+        
+        let ret = start + term;
+        if(ret > 360){
+            ret = ret % 360;
+        }else if(ret < 0){
+            ret = ret + 360; 
+        }
+        return ret;
     }
 
     function increase_tail(p, am) {
@@ -69,103 +96,116 @@
         p.tail = temp_tail;
     }
 
+    function update_tail(obj) {
+        //Lines from origo +- Pi/2 rads * radius, which then fills a solid in the draw funciton.
+        //Only updates one segment per draw to make it more efficient, cycles through list
+        obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
+        obj.tail[obj.tail_curr_segment] = {
+            x0: (Math.cos((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.x,
+            x1: (Math.cos((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.x,
+            y0: (Math.sin((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.y,
+            y1: (Math.sin((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.y
+        };
+        obj.tail_curr_segment++;
+    }
+
+    function update_sensors(obj){
+        obj.linear_sensors.forEach(sensor => {
+            sensor.deg 
+        });
+    }
+
+    function collision_detection(obj, next_x, next_y) {
+        //Out of bounds calculations.
+        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) b_flag_x = 1;
+        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) b_flag_y = 1;
+
+        if (b_flag_x | b_flag_y) {
+            obj.state = state.dead;
+        }
+
+        /*
+            Item detection system:
+
+            Check the arc/half circle from 0-180 deg from the current traveling angle (half the
+            circumference of the circle amount of steps to make it efficient) if any of the
+            pixels in this semicircle intersects with a pixel which is non-black = object has run into something.
+            It checks the pixels from the previously drawn rendering using getImageData to get a rectangle of the size of the radius +- buffer. 
+            
+            Much more efficient than manually doing logic checks for all the
+            potential tail sections and so forth. It adds 2 pixels to the radius due to
+            canvas adding some sort of bloom effect. Costs a bit of accuracy, but close enough.
+        */
+        let buffer = 3;
+
+        ctx_img_data = (ctx.getImageData(obj.x - obj.radius - buffer, obj.y - obj.radius - buffer, (obj.radius + buffer) * 2, (obj.radius + buffer) * 2)).data;
+
+        midpoint_img_data = obj.radius + buffer;
+        for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
+            pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+            pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
+
+            pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
+            p_r = ctx_img_data[pixel_pointer];
+            p_g = ctx_img_data[pixel_pointer + 1];
+            p_b = ctx_img_data[pixel_pointer + 2];
+            p_a = ctx_img_data[pixel_pointer + 3];
+
+            if (p_r > 0 || p_g > 0 || p_b > 0) {
+                if (p_g > 200) {
+                    //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
+                    increase_tail(obj, 50);
+                    for (const mb_apple of objects) {
+                        if (mb_apple.type == "apple") {
+                            mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
+                            mb_apple.y = (mb_apple.radius + Math.random() * h) - 2 * mb_apple.radius;
+                            mb_apple.state = state.frozen;
+                        }
+                    }
+                } else {
+                    collision_flag = 1;
+                }
+            }
+        }
+
+        if (!b_flag_x) {
+            obj.x = next_x
+        }
+        if (!b_flag_y) {
+            obj.y = next_y
+        }
+
+        if (collision_flag || b_flag_x || b_flag_y) {
+            obj.state = state.dead;
+            return 0;
+        } else {
+            return 1;
+        }
+    }
 
     function logic() {
         //Object detection and movement of every object
         for (const obj of objects) {
             if (obj.state == state.inactive) continue;
             //Flags are to determine intersections of other objects. At the moment the flags are only used to see if the object is out of bounds.
-            b_flag_x = 0, b_flag_y = 0, apple_flag = 0, collision_flag = 0, moved = 0;
+            let b_flag_x = 0, b_flag_y = 0, apple_flag = 0, collision_flag = 0, moved = 0, angle_change;
             switch (obj.type) {
                 case "player":
                     switch (obj.state) {
                         case state.moving:
+
                             //If the user has flagged to move to the left/right, increase/decrease angle.
-                            if (obj.move_left) obj.angle--;
-                            if (obj.move_right) obj.angle++;
+                            if (obj.move_left) angle_change = -1;
+                            if (obj.move_right) angle_change = 1;
                             //Always calculate the next x/y position. The position is the origo of the circle.
                             next_x = obj.x + Math.cos(obj.angle * (Math.PI / 180));
                             next_y = obj.y + Math.sin(obj.angle * (Math.PI / 180));
-
-                            //Out of bounds calculations.
-                            if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) b_flag_x = 1;
-                            if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) b_flag_y = 1;
-
-                            if (b_flag_x | b_flag_y) {
-                                obj.state = state.dead;
-                                continue;
-                            }
-
-                            /*
-                                Item detection system:
-
-                                Check the arc/half circle from 0-180 deg from the current traveling angle (half the
-                                circumference of the circle amount of steps to make it efficient) if any of the
-                                pixels in this semicircle intersects with a pixel which is non-black = object has run into something.
-                                It checks the pixels from the previously drawn rendering using getImageData to get a rectangle of the size of the radius +- buffer. 
-                                
-                                Much more efficient than manually doing logic checks for all the
-                                potential tail sections and so forth. It adds 2 pixels to the radius due to
-                                canvas adding some sort of bloom effect. Costs a bit of accuracy, but close enough.
-                            */
-                            let buffer = 3;
-
-                            ctx_img_data = (ctx.getImageData(obj.x - obj.radius - buffer, obj.y - obj.radius - buffer, (obj.radius + buffer) * 2, (obj.radius + buffer) * 2)).data;
-
-                            midpoint_img_data = obj.radius + buffer;
-                            for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
-                                pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
-                                pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.angle - 90) * (Math.PI / 180)) * (obj.radius + buffer));
-
-                                pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
-                                p_r = ctx_img_data[pixel_pointer];
-                                p_g = ctx_img_data[pixel_pointer + 1];
-                                p_b = ctx_img_data[pixel_pointer + 2];
-                                p_a = ctx_img_data[pixel_pointer + 3];
-
-                                if (p_r > 0 || p_g > 0 || p_b > 0) {
-                                    if (p_g > 200) {
-                                        //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
-                                        increase_tail(obj, 500);
-                                        for (const mb_apple of objects) {
-                                            if (mb_apple.type == "apple") {
-                                                mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
-                                                mb_apple.y = (mb_apple.radius + Math.random() * h) - 2 * mb_apple.radius;
-                                                mb_apple.state = state.frozen;
-                                            }
-                                        }
-                                    } else {
-                                        //Oshit dawg, you hit some cray shit, not good mydude, you out
-                                        collision_flag = 1;
-                                    }
-                                }
-                            }
-
-                            if (!b_flag_x) {
-                                moved = 1;
-                                obj.x = next_x
-                            }
-                            if (!b_flag_y) {
-                                moved = 1;
-                                obj.y = next_y
-                            }
-
-                            if (collision_flag || b_flag_x || b_flag_y) {
-                                obj.state = state.dead;
-                            }
+                            moved = collision_detection(obj, next_x, next_y);
 
                             //If the object has moved, draw tail.
                             if (moved) {
-                                //Lines from origo +- Pi/2 rads * radius, which then fills a solid in the draw funciton.
-                                //Only updates one segment per draw to make it more efficient, cycles through list
-                                obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
-                                obj.tail[obj.tail_curr_segment] = {
-                                    x0: (Math.cos((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.x,
-                                    x1: (Math.cos((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.x,
-                                    y0: (Math.sin((obj.angle + 90) * (Math.PI / 180))) * obj.radius + obj.y,
-                                    y1: (Math.sin((obj.angle - 90) * (Math.PI / 180))) * obj.radius + obj.y
-                                };
-                                obj.tail_curr_segment++;
+                                update_tail(obj);
+                                update_sensors(obj);
                             }
                             break;
 
@@ -283,11 +323,7 @@
         }
     }
 
-    /* function load_workers(){
-        logics = new Worker("workers/logics.js");
-    } */
-
-    function add_player(id, type, state, move_left, move_right, x, y, deg, color, radius, tail_length) {
+    function add_player(list, id, type, state, move_left, move_right, x, y, deg, color, radius, tail_length) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -301,7 +337,8 @@
         p.radius = radius;
         p.tail = [];
         p.tail_length = tail_length;
-        objects.push(p);
+        init_sensors(p, deg);
+        list.push(p);
     }
 
     function add_static_obj(id, type, state, x, y, color, radius) {
@@ -320,7 +357,9 @@
         document.addEventListener('keydown', (event) => {
             const keyName = event.key;
             if (keyName == 'p') {
-                alert('Paused script')
+                console.log(objects[0].linear_sensors);
+                
+                alert('Paused script');
             }
             if (keyName == 'a') {
                 objects[0].move_left = true;
@@ -353,9 +392,9 @@
     function restart_game() {
         objects = [];
         //Red
-        add_player(0, "player", state.moving, 0, 0, w / 4, h / 2, 0, "#113add", 10, 20);
+        add_player(objects, 0, "player", state.moving, 0, 0, w / 4, h / 2, 0, "#113add", 10, 20);
         //Blue
-        add_player(1, "player", state.moving, 0, 0, 3 * w / 4, h / 2, 180, "#dd113a", 10, 20);
+        add_player(objects, 1, "player", state.moving, 0, 0, 3 * w / 4, h / 2, 180, "#dd113a", 10, 20);
         //Apple
         add_static_obj(2, "apple", state.frozen, w / 2, h / 2, "#3add11", 5);
         window.requestAnimationFrame(step);
@@ -401,8 +440,8 @@
         console.log("-- Start --");
         document.getElementsByClassName('background-container')[0].appendChild(canvas);
         add_event_listeners();
-        init_tensorflow();
-        // restart_game();
+        //init_tensorflow();
+        restart_game();
     }
 
     init();
