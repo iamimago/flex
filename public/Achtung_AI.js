@@ -32,7 +32,9 @@
             DEAD: 2
         },
         DEFAULT_TAIL_LENGTH = 200,
-        DEFAULT_SPEED = 2,
+        DEFAULT_SPEED = 1,
+        DEFAULT_TURN_SPEED = 3,
+        MIN_FPS = 60,
         FPS_REPORT = 1,
         FPS_REPORT_FREQUENCY = 2;
 
@@ -68,7 +70,7 @@
     }
 
     function deg_to_rad(deg){
-        return (180 / (Math.PI)) * deg;
+        return ((Math.PI)/ 180) * deg;
     }
 
     function pause_log() {
@@ -154,18 +156,17 @@
 
                             //If the user has flagged to move to the left/right, increase/decrease angle.
                             if (obj.move_left) {
-                                angle_change = -1;
+                                angle_change = -obj.turn_speed;
                             } else if (obj.move_right) {
-                                angle_change = 1;
+                                angle_change = obj.turn_speed;
                             } else {
                                 angle_change = 0;
                             }
 
-                            obj.deg = obj.deg + angle_change;
-
-                            //Always calculate the next x/y position. The position is the origo of the circle.
-                            next_x = obj.x + DEFAULT_SPEED * Math.cos(obj.deg * (Math.PI / 180));
-                            next_y = obj.y + DEFAULT_SPEED * Math.sin(obj.deg * (Math.PI / 180));
+                            obj.deg += angle_change;
+                            
+                            next_x = obj.x + DEFAULT_SPEED * Math.cos(deg_to_rad(obj.deg));
+                            next_y = obj.y + DEFAULT_SPEED * Math.sin(deg_to_rad(obj.deg));
                             moved = collision_detection(obj, next_x, next_y);
 
                             //If the object has moved, draw tail.
@@ -300,11 +301,14 @@
         }, 1000);
     }
 
-    let first_run = 1;
+    let first_run = 1, t1 = 0, t2 = 0, t3 = 0, calc_avr_list = [], calc_avr = 0;
     function step() {
+        calc_avr_list.length = 0;
+        t1 = performance.now();
         
         if(FPS_REPORT) fps++;
 
+        //Hack for tail drawing system. 
         if(first_run){
             draw();
             first_run = 0;
@@ -313,6 +317,24 @@
         logic();
         if (!reset) {
             draw();
+
+            //Ensures 60 fps, does spare calculations as it waits for new tick. On my computer, about 3M extra computations per second can be made instead of waiting. 
+            do{
+                calc_avr = 0;
+                t2 = performance.now();
+                //START SPARE CALCUALATIONS
+
+                //END SPARE CALCULATIONS
+
+                //Average calculation time as a buffer to ensure close to min fps
+                t3 = performance.now()
+                calc_avr_list.push(t3-t2);
+                for(let i = 0; i < calc_avr_list.length; i++){
+                    calc_avr += calc_avr_list[i];
+                }
+                calc_avr = calc_avr / calc_avr_list.length;
+            }while((t2 - t1) + calc_avr < 1000/MIN_FPS);
+            
             window.requestAnimationFrame(step);
         }else{
             game_over();
@@ -320,7 +342,7 @@
         }
     }
 
-    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, color, radius, tail_length) {
+    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, radius, tail_length) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -330,6 +352,7 @@
         p.x = x;
         p.y = y;
         p.deg = deg;
+        p.turn_speed = turn_speed;
         p.color = color;
         p.radius = radius;
         p.tail = [];
@@ -401,9 +424,9 @@
         let id = 0;
         for (let i = 0; i < players; i++) {
             if (DEBUG) {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, COLORS[i], 10, DEFAULT_TAIL_LENGTH);
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH);
             } else {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, colors[i], 10, DEFAULT_TAIL_LENGTH);
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, colors[i], 10, DEFAULT_TAIL_LENGTH);
             }
             id++;
         }
