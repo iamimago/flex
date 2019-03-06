@@ -10,15 +10,6 @@
         entity,
         next_x,
         next_y,
-        pixel_pointer,
-        pixel_pointer_x,
-        pixel_pointer_y,
-        p_r,
-        p_g,
-        p_b,
-        p_a,
-        ctx_img_data,
-        midpoint_img_data,
         reset,
         game_mode,
         probe_x, probe_y;
@@ -41,7 +32,9 @@
             DEAD: 2
         },
         DEFAULT_TAIL_LENGTH = 200,
-        FPS_REPORT_FREQUENCY = 10;
+        DEFAULT_SPEED = 2,
+        FPS_REPORT = 1,
+        FPS_REPORT_FREQUENCY = 2;
 
     entity = {
         id: -1,
@@ -120,100 +113,26 @@
             p_counter = 0;
             probe_x = obj.x + obj.radius * Math.cos(deg_to_rad(sensor.deg)) * 1.5;
             probe_y = obj.y + obj.radius * Math.sin(deg_to_rad(sensor.deg)) * 1.5;
-            let foo_counter = 0;
-            while(probe_x > 0 && probe_y > 0 && probe_x < w && probe_y < h && !hit){
-                //ctx_img_data = (ctx.getImageData(~~probe_x, ~~probe_y, 1, 1)).data;
-                
-                p_r = ctx_img_data[0];
-                p_g = ctx_img_data[1];
-                p_b = ctx_img_data[2];
-                p_a = ctx_img_data[3];
-                if(p_r > 5 || p_g > 5 || p_b > 5){
-                    sensor.hit_length = p_counter;
-                    hit = 1;
-                }
-                probe_x += Math.cos(deg_to_rad(sensor.deg));
-                probe_y += Math.sin(deg_to_rad(sensor.deg));
-                p_counter++;
-                foo_counter++;
-            }
-            /* console.log({probe_x, probe_y, foo_counter});
-            pause_log(); */
+
         });
     }
 
     function collision_detection(obj, next_x, next_y) {
-        let b_flag_x = 0,
-            b_flag_y = 0,
+        let oob_x_flag = 0,
+            oob_y_flag = 0,
             apple_flag = 0,
             collision_flag = 0;
+
         //Out of bounds calculations.
-        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) b_flag_x = 1;
-        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) b_flag_y = 1;
+        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) oob_x_flag = 1;
+        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) oob_y_flag = 1;
 
-        if (b_flag_x | b_flag_y) {
-            obj.state = STATE.DEAD;
-        }
+        if (oob_x_flag | oob_y_flag) obj.state = STATE.DEAD;
 
-        /*
-            Item detection system:
+        if (!oob_x_flag) obj.x = next_x;
+        if (!oob_y_flag) obj.y = next_y;
 
-            Check the arc/half circle from 0-180 deg from the current traveling angle (half the
-            circumference of the circle amount of steps to make it efficient) if any of the
-            pixels in this semicircle intersects with a pixel which is non-black = object has run into something.
-            It checks the pixels from the previously drawn rendering using getImageData to get a rectangle of the size of the radius +- buffer. 
-            
-            Much more efficient than manually doing logic checks for all the
-            potential tail sections and so forth. It adds 2 pixels to the radius due to
-            canvas adding some sort of bloom effect. Costs a bit of accuracy, but close enough.
-        */
-        let buffer = 3;
-
-        ctx_img_data = (ctx.getImageData(obj.x - obj.radius - buffer, obj.y - obj.radius - buffer, (obj.radius + buffer) * 2, (obj.radius + buffer) * 2)).data;
-
-        midpoint_img_data = obj.radius + buffer;
-        for (let i = 0; i < ~~(Math.PI * obj.radius); i++) {
-            if (!collision_flag) {
-                pixel_pointer_x = midpoint_img_data + (Math.cos(((180 / (Math.PI * obj.radius) * i) + obj.deg - 90) * (Math.PI / 180)) * (obj.radius + buffer));
-                pixel_pointer_y = midpoint_img_data + (Math.sin(((180 / (Math.PI * obj.radius) * i) + obj.deg - 90) * (Math.PI / 180)) * (obj.radius + buffer));
-
-                pixel_pointer = (~~pixel_pointer_x + (~~pixel_pointer_y * (obj.radius + buffer) * 2)) * 4;
-                p_r = ctx_img_data[pixel_pointer];
-                p_g = ctx_img_data[pixel_pointer + 1];
-                p_b = ctx_img_data[pixel_pointer + 2];
-                p_a = ctx_img_data[pixel_pointer + 3];
-
-                if (p_r > 0 || p_g > 0 || p_b > 0) {
-                    console.log({p_r, p_g, p_b});
-                    
-                    if (p_g > 200) {
-                        console.log(`Object: ${obj.id} has collided with apple.`);
-                        //Only green item in game, must be apple. Ugly solution, Too tired to fix it. Not very unefficient relatively speaking. 
-                        increase_tail(obj, 50);
-                        for (const mb_apple of objects) {
-                            if (mb_apple.type == "apple") {
-                                mb_apple.x = (mb_apple.radius + Math.random() * w) - 2 * mb_apple.radius;
-                                mb_apple.y = (mb_apple.radius + Math.random() * h) - 2 * mb_apple.radius;
-                                mb_apple.state = STATE.FROZEN;
-                            }
-                        }
-                    } else {
-                        console.log(`Object: ${obj.id} has collided with danger.`);
-
-                        collision_flag = 1;
-                    }
-                }
-            }
-        }
-
-        if (!b_flag_x) {
-            obj.x = next_x
-        }
-        if (!b_flag_y) {
-            obj.y = next_y
-        }
-
-        if (collision_flag || b_flag_x || b_flag_y) {
+        if (collision_flag || oob_x_flag || oob_y_flag) {
             obj.state = STATE.DEAD;
             return 0;
         } else {
@@ -245,8 +164,8 @@
                             obj.deg = obj.deg + angle_change;
 
                             //Always calculate the next x/y position. The position is the origo of the circle.
-                            next_x = obj.x + Math.cos(obj.deg * (Math.PI / 180));
-                            next_y = obj.y + Math.sin(obj.deg * (Math.PI / 180));
+                            next_x = obj.x + DEFAULT_SPEED * Math.cos(obj.deg * (Math.PI / 180));
+                            next_y = obj.y + DEFAULT_SPEED * Math.sin(obj.deg * (Math.PI / 180));
                             moved = collision_detection(obj, next_x, next_y);
 
                             //If the object has moved, draw tail.
@@ -383,11 +302,14 @@
 
     let first_run = 1;
     function step() {
-        fps++;
+        
+        if(FPS_REPORT) fps++;
+
         if(first_run){
             draw();
             first_run = 0;
         }
+        
         logic();
         if (!reset) {
             draw();
@@ -581,6 +503,7 @@
     }
 
     function init() {
+        
         w = window.innerWidth;
         h = window.innerHeight;
 
@@ -594,7 +517,9 @@
         console.log("-- Start --");
         document.getElementsByClassName('background-container')[0].appendChild(canvas);
         add_event_listeners();
-        fps_counter();
+
+        if(FPS_REPORT) fps_counter();
+
         //init_tensorflow();
         init_game(PLAYERS, APPLES);
     }
