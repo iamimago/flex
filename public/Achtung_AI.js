@@ -36,7 +36,8 @@
         DEFAULT_TURN_SPEED = 3,
         MIN_FPS = 60,
         FPS_REPORT = 1,
-        FPS_REPORT_FREQUENCY = 2;
+        FPS_REPORT_FREQUENCY = 2,
+        AI_SENSORS = 1;
 
     entity = {
         id: -1,
@@ -50,7 +51,7 @@
         radius: -1,
         bounding_box: [],
         linear_sensors: [],
-        sensor_amount: 3,
+        sensor_amount: 1,
         tail: [],
         tail_curr_segment: 0,
         tail_length: -1,
@@ -77,6 +78,40 @@
         console.log(objects);
         //console.log(objects[0].linear_sensors);
         alert("Paused");
+    }
+
+    function add_event_listeners() {
+        document.addEventListener('keydown', (event) => {
+            const keyName = event.key;
+            if (keyName == 'p') {
+                pause_log();
+            }
+            if (keyName == 'a') {
+                objects[0].move_left = true;
+            }
+            if (keyName == 'd') {
+                objects[0].move_right = true;
+            }
+            if (keyName == 'm') {
+                //Cheat all you want
+                increase_tail(objects[0], 10);
+            }
+            if (keyName == 'l') {
+                //Used for debugging, not essential for the game, therefore very primitive.
+                objects[0].tail_length -= 10;
+            }
+        }, false);
+
+        document.addEventListener('keyup', (event) => {
+            const keyName = event.key;
+            if (keyName == 'a') {
+                objects[0].move_left = false;
+            }
+            if (keyName == 'd') {
+                objects[0].move_right = false;
+            }
+
+        }, false);
     }
 
     function increase_tail(p, am) {
@@ -106,35 +141,32 @@
     }
 
     function update_sensors(obj, deg) {
-        let p_counter = 0, hit = 0, i = 0;
+        let hit = 0;
 
         obj.linear_sensors.forEach(sensor => {
             sensor.deg += deg;
-
             hit = 0;
-            p_counter = 0;
-            probe_x = obj.x + obj.radius * Math.cos(deg_to_rad(sensor.deg)) * 1.5;
-            probe_y = obj.y + obj.radius * Math.sin(deg_to_rad(sensor.deg)) * 1.5;
 
+            // x = 
         });
     }
 
     function collision_detection(obj, next_x, next_y) {
-        let oob_x_flag = 0,
-            oob_y_flag = 0,
-            apple_flag = 0,
-            collision_flag = 0;
+        let oob_x = 0,
+            oob_y = 0,
+            hit_apple = 0,
+            hit_enemy = 0;
 
         //Out of bounds calculations.
-        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) oob_x_flag = 1;
-        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) oob_y_flag = 1;
+        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) oob_x = 1;
+        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) oob_y = 1;
 
-        if (oob_x_flag | oob_y_flag) obj.state = STATE.DEAD;
+        if (oob_x | oob_y) obj.state = STATE.DEAD;
 
-        if (!oob_x_flag) obj.x = next_x;
-        if (!oob_y_flag) obj.y = next_y;
+        if (!oob_x) obj.x = next_x;
+        if (!oob_y) obj.y = next_y;
 
-        if (collision_flag || oob_x_flag || oob_y_flag) {
+        if (hit_enemy || oob_x || oob_y) {
             obj.state = STATE.DEAD;
             return 0;
         } else {
@@ -342,7 +374,19 @@
         }
     }
 
-    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, radius, tail_length) {
+    function init_sensors(obj, deg) {
+        let angle_segment = SENSOR_ANGLE / obj.sensor_amount,
+            start_angle = modular_angle_addition(deg, -(angle_segment * Math.floor(obj.sensor_amount/2)));
+
+        for (let i = 0; i < obj.sensor_amount; i++) {
+            obj.linear_sensors[i] = {
+                deg: modular_angle_addition(start_angle, angle_segment * i),
+                hit_length: -1
+            };
+        }
+    }
+
+    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, radius, tail_length, sensor_amount) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -357,6 +401,8 @@
         p.radius = radius;
         p.tail = [];
         p.tail_length = tail_length;
+        p.sensor_amount = sensor_amount;
+        p.linear_sensors = [];
         init_sensors(p, deg);
         list.push(p);
     }
@@ -371,76 +417,6 @@
         p.color = color;
         p.radius = radius;
         list.push(p);
-    }
-
-    function add_event_listeners() {
-        document.addEventListener('keydown', (event) => {
-            const keyName = event.key;
-            if (keyName == 'p') {
-                pause_log();
-            }
-            if (keyName == 'a') {
-                objects[0].move_left = true;
-            }
-            if (keyName == 'd') {
-                objects[0].move_right = true;
-            }
-            if (keyName == 'm') {
-                //Cheat all you want
-                increase_tail(objects[0], 10);
-            }
-            if (keyName == 'l') {
-                //Used for debugging, not essential for the game, therefore very primitive.
-                objects[0].tail_length -= 10;
-            }
-        }, false);
-
-        document.addEventListener('keyup', (event) => {
-            const keyName = event.key;
-            if (keyName == 'a') {
-                objects[0].move_left = false;
-            }
-            if (keyName == 'd') {
-                objects[0].move_right = false;
-            }
-
-        }, false);
-    }
-
-    function init_sensors(obj, deg) {
-        let angle_segment = SENSOR_ANGLE / obj.sensor_amount,
-            start_angle = modular_angle_addition(deg, -(angle_segment * Math.floor(obj.sensor_amount/2)));
-
-        for (let i = 0; i < obj.sensor_amount; i++) {
-            obj.linear_sensors[i] = {
-                deg: modular_angle_addition(start_angle, angle_segment * i),
-                hit_length: -1
-            };
-        }
-
-    }
-
-    function init_game(players, apples) {
-        let id = 0;
-        for (let i = 0; i < players; i++) {
-            if (DEBUG) {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH);
-            } else {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, colors[i], 10, DEFAULT_TAIL_LENGTH);
-            }
-            id++;
-        }
-
-        for (let i = 0; i < apples; i++) {
-            if (DEBUG) {
-                add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5);
-            } else {
-                add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5);
-            }
-            id++;
-        }
-
-        start_game();
     }
 
     function reset_positions() {
@@ -482,7 +458,6 @@
             restart_game();
         } else {
             console.log("game_mode error in game_over");
-
         }
     }
 
@@ -495,7 +470,6 @@
         reset = 0;
         window.requestAnimationFrame(step);
     }
-
 
     function init_tensorflow() {
         // Define a model for linear regression.
@@ -524,9 +498,31 @@
             model.predict(tf.tensor2d([5], [1, 1])).print();
         });
     }
+    
+    function init_game(players, apples) {
+        let id = 0;
+        for (let i = 0; i < players; i++) {
+            if (DEBUG) {
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH, AI_SENSORS);
+            } else {
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, colors[i], 10, DEFAULT_TAIL_LENGTH);
+            }
+            id++;
+        }
+
+        for (let i = 0; i < apples; i++) {
+            if (DEBUG) {
+                add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5);
+            } else {
+                add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5);
+            }
+            id++;
+        }
+
+        start_game();
+    }
 
     function init() {
-        
         w = window.innerWidth;
         h = window.innerHeight;
 
