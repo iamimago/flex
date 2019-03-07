@@ -7,6 +7,7 @@
         canvas,
         ctx,
         objects = [],
+        apple_list = [],
         entity,
         next_x,
         next_y,
@@ -20,6 +21,7 @@
         COLORS = ["red", "blue", "purple", "yellow", "orange"],
         DEBUG = 1,
         DEBUG_POS_X = [400, 2 * window.innerWidth / 8],
+        DEBUG_POS_Y = [100, 500],
         DEBUG_ANGLE = [0, 180],
         MODES = {
             PLAYER: 0,
@@ -37,7 +39,7 @@
         MIN_FPS = 60,
         FPS_REPORT = 1,
         FPS_REPORT_FREQUENCY = 2,
-        AI_SENSORS = 1;
+        AI_SENSORS = 3;
 
     entity = {
         id: -1,
@@ -64,19 +66,19 @@
             ret = ret % 360;
         } else if (ret < 0) {
             ret = ret + 360;
-        } else if(ret == 360){
+        } else if (ret == 360) {
             ret = 0;
         }
         return ret;
     }
 
-    function deg_to_rad(deg){
-        return ((Math.PI)/ 180) * deg;
+    function deg_to_rad(deg) {
+        return ((Math.PI) / 180) * deg;
     }
 
     function pause_log() {
         console.log(objects);
-        //console.log(objects[0].linear_sensors);
+        console.log(objects[0].linear_sensors);
         alert("Paused");
     }
 
@@ -141,13 +143,112 @@
     }
 
     function update_sensors(obj, deg) {
-        let hit = 0;
+        let hit = 0,
+            dx = 0,
+            dy = 0,
+            hyp_1 = 0,
+            hyp_2 = 0,
+            s_deg = 0,
+            hit_x, hit_y;
 
         obj.linear_sensors.forEach(sensor => {
-            sensor.deg += deg;
+            sensor.deg = modular_angle_addition(sensor.deg, deg);
+            s_deg = sensor.deg;
             hit = 0;
 
-            // x = 
+            if (s_deg <= 90) {
+                dx = w - obj.x;
+                dy = h - obj.y;
+
+                hyp_1 = dx / Math.cos(deg_to_rad(s_deg));
+                hyp_2 = dy / Math.sin(deg_to_rad(s_deg));
+                if (hyp_1 < hyp_2) {
+                    hit = hyp_1;
+                    hit_x = w;
+                    hit_y = obj.y + hyp_1 * Math.sin(deg_to_rad(s_deg));
+                } else {
+                    hit = hyp_2;
+                    hit_x = obj.x + hyp_2 * Math.cos(deg_to_rad(s_deg));
+                    hit_y = h;
+                }
+                hit = hyp_1 < hyp_2 ? hyp_1 : hyp_2;
+            } else if (s_deg > 90 && s_deg <= 180) {
+                dx = obj.x;
+                dy = h - obj.y;
+
+                hyp_1 = dx / Math.sin(deg_to_rad(s_deg - 90));
+                hyp_2 = dy / Math.cos(deg_to_rad(s_deg - 90));
+                if (hyp_1 < hyp_2) {
+                    hit = hyp_1;
+                    hit_x = 0;
+                    hit_y = obj.y + hyp_1 * Math.cos(deg_to_rad(s_deg - 90));
+                } else {
+                    hit = hyp_2;
+                    hit_x = obj.x - hyp_2 * Math.sin(deg_to_rad(s_deg - 90));
+                    hit_y = h;
+                }
+                hit = hyp_1 < hyp_2 ? hyp_1 : hyp_2;
+
+            } else if (s_deg > 180 && s_deg <= 270) {
+                dx = obj.x;
+                dy = obj.y;
+
+                hyp_1 = dx / Math.cos(deg_to_rad(s_deg - 180));
+                hyp_2 = dy / Math.sin(deg_to_rad(s_deg - 180));
+                if (hyp_1 < hyp_2) {
+                    hit = hyp_1;
+                    hit_x = 0;
+                    hit_y = obj.y - hyp_1 * Math.sin(deg_to_rad(s_deg - 180));
+                } else {
+                    hit = hyp_2;
+                    hit_x = obj.x - hyp_2 * Math.cos(deg_to_rad(s_deg - 180));
+                    hit_y = 0;
+                }
+                hit = hyp_1 < hyp_2 ? hyp_1 : hyp_2;
+
+            } else if (s_deg > 270) {
+                dx = w - obj.x;
+                dy = obj.y;
+
+                hyp_1 = dx / Math.sin(deg_to_rad(s_deg - 270));
+                hyp_2 = dy / Math.cos(deg_to_rad(s_deg - 270));
+                if (hyp_1 < hyp_2) {
+                    hit = hyp_1;
+                    hit_x = w;
+                    hit_y = obj.y - hyp_1 * Math.sin(deg_to_rad(s_deg - 180));
+                } else {
+                    hit = hyp_2;
+                    hit_x = obj.x + hyp_2 * Math.cos(deg_to_rad(s_deg));;
+                    hit_y = 0;
+                }
+                hit = hyp_1 < hyp_2 ? hyp_1 : hyp_2;
+            }
+
+            apple_list.forEach(apple => {
+                /* 
+                    Solution 1:
+                        1. Bounding box
+                        2. Get subsection of render surrounding bounding box if sensor is near 
+                            Problem: Potentially SENSOR_AMOUNT of subsections of render, could be heavy
+                        3. Calculate line intersection point
+                            Problem: Mathy as fucking fuck.
+                        4. Probe line in bounding box (worst case w pixels probed, worst case bounding box largest size)
+                        5. Return hit if hit
+                
+                    Solution 2:
+
+                    Some sort of raytracing method. The line is a ray. How does it know if it has hit a foreign object?
+                        1. ...
+
+                    Solution 3:
+                    Use this https://jsfiddle.net/nLMTW/
+                */
+
+            });
+
+            sensor.hit_length = hit;
+            sensor.hit_x = hit_x;
+            sensor.hit_y = hit_y;
         });
     }
 
@@ -195,8 +296,8 @@
                                 angle_change = 0;
                             }
 
-                            obj.deg += angle_change;
-                            
+                            obj.deg = modular_angle_addition(obj.deg, angle_change);;
+
                             next_x = obj.x + DEFAULT_SPEED * Math.cos(deg_to_rad(obj.deg));
                             next_y = obj.y + DEFAULT_SPEED * Math.sin(deg_to_rad(obj.deg));
                             moved = collision_detection(obj, next_x, next_y);
@@ -263,6 +364,22 @@
                     ctx.fill();
                     ctx.stroke();
 
+                    //Draw sensors (Debug only)
+                    if (DEBUG) {
+                        ctx.fillStyle = "white";
+                        ctx.strokeStyle = "white";
+                        obj.linear_sensors.forEach(sen => {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.x, obj.y);
+                            ctx.lineTo(sen.hit_x, sen.hit_y);
+                            ctx.closePath();
+                            ctx.stroke();
+                        });
+
+                        ctx.fillStyle = obj.color;
+                        ctx.strokeStyle = obj.color;
+                    }
+
                     //Draw tail
                     ctx.beginPath();
 
@@ -302,7 +419,8 @@
                     ctx.arc(obj.x, obj.y, obj.radius, 0, 2 * Math.PI, false);
                     ctx.closePath();
                     ctx.fill();
-                    ctx.stroke();
+                    ctx.stroke();                   
+                    
                     break;
 
                 default:
@@ -312,14 +430,18 @@
         }
     }
 
-    let fps_list = [], fps_report = 0, fps=0;
-    function fps_counter(){
-        let sum = 0, avr = 0;
+    let fps_list = [],
+        fps_report = 0,
+        fps = 0;
+
+    function fps_counter() {
+        let sum = 0,
+            avr = 0;
         setInterval(() => {
             fps_list.push(fps);
             fps_report++;
-            if(fps_report == FPS_REPORT_FREQUENCY){
-                for(let i = 0; i < fps_list.length; i++){
+            if (fps_report == FPS_REPORT_FREQUENCY) {
+                for (let i = 0; i < fps_list.length; i++) {
                     sum += fps_list[i];
                 }
                 avr = sum / fps_report;
@@ -333,25 +455,31 @@
         }, 1000);
     }
 
-    let first_run = 1, t1 = 0, t2 = 0, t3 = 0, calc_avr_list = [], calc_avr = 0;
+    let first_run = 1,
+        t1 = 0,
+        t2 = 0,
+        t3 = 0,
+        calc_avr_list = [],
+        calc_avr = 0;
+
     function step() {
         calc_avr_list.length = 0;
         t1 = performance.now();
-        
-        if(FPS_REPORT) fps++;
+
+        if (FPS_REPORT) fps++;
 
         //Hack for tail drawing system. 
-        if(first_run){
+        if (first_run) {
             draw();
             first_run = 0;
         }
-        
+
         logic();
         if (!reset) {
             draw();
 
             //Ensures 60 fps, does spare calculations as it waits for new tick. On my computer, about 3M extra computations per second can be made instead of waiting. 
-            do{
+            do {
                 calc_avr = 0;
                 t2 = performance.now();
                 //START SPARE CALCUALATIONS
@@ -360,15 +488,15 @@
 
                 //Average calculation time as a buffer to ensure close to min fps
                 t3 = performance.now()
-                calc_avr_list.push(t3-t2);
-                for(let i = 0; i < calc_avr_list.length; i++){
+                calc_avr_list.push(t3 - t2);
+                for (let i = 0; i < calc_avr_list.length; i++) {
                     calc_avr += calc_avr_list[i];
                 }
                 calc_avr = calc_avr / calc_avr_list.length;
-            }while((t2 - t1) + calc_avr < 1000/MIN_FPS);
-            
+            } while ((t2 - t1) + calc_avr < 1000 / MIN_FPS);
+
             window.requestAnimationFrame(step);
-        }else{
+        } else {
             game_over();
             console.log("Game over!");
         }
@@ -376,7 +504,7 @@
 
     function init_sensors(obj, deg) {
         let angle_segment = SENSOR_ANGLE / obj.sensor_amount,
-            start_angle = modular_angle_addition(deg, -(angle_segment * Math.floor(obj.sensor_amount/2)));
+            start_angle = modular_angle_addition(deg, -(angle_segment * Math.floor(obj.sensor_amount / 2)));
 
         for (let i = 0; i < obj.sensor_amount; i++) {
             obj.linear_sensors[i] = {
@@ -417,28 +545,36 @@
         p.color = color;
         p.radius = radius;
         list.push(p);
+        return p;
     }
 
     function reset_positions() {
-        let i = 0;
+        let i = 0,
+            obj;
         for (; i < PLAYERS; i++) {
-            objects[i].state = STATE.MOVING;
-            objects[i].tail.length = 0;
-            objects[i].tail_curr_segment = 0;
-            objects[i].tail_length = DEFAULT_TAIL_LENGTH;
+            obj = objects[i];
+            obj.state = STATE.MOVING;
+            obj.tail.length = 0;
+            obj.tail_curr_segment = 0;
+            obj.tail_length = DEFAULT_TAIL_LENGTH;
             if (DEBUG) {
-                objects[i].x = DEBUG_POS_X[i];
-                objects[i].deg = DEBUG_ANGLE[i];
+                obj.x = DEBUG_POS_X[i];
+                obj.y = DEBUG_POS_Y[i];
+                obj.deg = DEBUG_ANGLE[i];
+                obj.linear_sensors.length = 0;
             } else {
-                objects[i].x = Math.random() * w;
-                objects[i].y = Math.random() * h;
+                obj.x = Math.random() * w;
+                obj.y = Math.random() * h;
+                obj.deg = Math.random() * 360;
+                obj.linear_sensors.length = 0;
             }
+            init_sensors(obj, obj.deg);
         }
 
         let n = i + APPLES;
         for (; i < n; i++) {
-            objects[i].x = Math.random() * w;
-            objects[i].y = Math.random() * h;
+            obj.x = Math.random() * w;
+            obj.y = Math.random() * h;
         }
     }
 
@@ -465,7 +601,7 @@
         window.requestAnimationFrame(step);
     }
 
-    function restart_game(){
+    function restart_game() {
         reset_positions();
         reset = 0;
         window.requestAnimationFrame(step);
@@ -498,12 +634,12 @@
             model.predict(tf.tensor2d([5], [1, 1])).print();
         });
     }
-    
+
     function init_game(players, apples) {
         let id = 0;
         for (let i = 0; i < players; i++) {
             if (DEBUG) {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], h / 2, DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH, AI_SENSORS);
+                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], DEBUG_POS_Y[i], DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH, AI_SENSORS);
             } else {
                 add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, colors[i], 10, DEFAULT_TAIL_LENGTH);
             }
@@ -512,9 +648,9 @@
 
         for (let i = 0; i < apples; i++) {
             if (DEBUG) {
-                add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5);
+                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5));
             } else {
-                add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5);
+                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5));
             }
             id++;
         }
@@ -537,7 +673,7 @@
         document.getElementsByClassName('background-container')[0].appendChild(canvas);
         add_event_listeners();
 
-        if(FPS_REPORT) fps_counter();
+        if (FPS_REPORT) fps_counter();
 
         //init_tensorflow();
         init_game(PLAYERS, APPLES);
