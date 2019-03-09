@@ -7,6 +7,7 @@
         canvas,
         ctx,
         objects = [],
+        player_list = [],
         apple_list = [],
         entity,
         next_x,
@@ -16,12 +17,12 @@
         probe_x, probe_y;
 
     const SENSOR_ANGLE = 160,
-        PLAYERS = 1,
+        PLAYERS = 2,
         APPLES = 1,
         COLORS = ["red", "blue", "purple", "yellow", "orange"],
         DEBUG = 1,
-        DEBUG_POS_X = [400, 2 * window.innerWidth / 8],
-        DEBUG_POS_Y = [100, 500],
+        DEBUG_POS_X = [100, 2 * window.innerWidth / 8],
+        DEBUG_POS_Y = [700, 500],
         DEBUG_ANGLE = [0, 180],
         MODES = {
             PLAYER: 0,
@@ -39,7 +40,8 @@
         MIN_FPS = 60,
         FPS_REPORT = 1,
         FPS_REPORT_FREQUENCY = 2,
-        AI_SENSORS = 3;
+        AI_SENSORS = 3,
+        BOUNDING_BOX_SEGMENT_SIZE = 20;
 
     entity = {
         id: -1,
@@ -50,7 +52,7 @@
         x: -1,
         y: -1,
         angle: -1,
-        radius: -1,
+        r: -1,
         bounding_box: [],
         linear_sensors: [],
         sensor_amount: 1,
@@ -76,9 +78,11 @@
         return ((Math.PI) / 180) * deg;
     }
 
-    function pause_log() {
+    function plog(print) {
+        if(print != undefined){
+            console.log(print);
+        }
         console.log(objects);
-        console.log(objects[0].linear_sensors);
         alert("Paused");
     }
 
@@ -86,7 +90,7 @@
         document.addEventListener('keydown', (event) => {
             const keyName = event.key;
             if (keyName == 'p') {
-                pause_log();
+                plog();
             }
             if (keyName == 'a') {
                 objects[0].move_left = true;
@@ -130,16 +134,118 @@
     }
 
     function update_tail(obj) {
-        //Lines from origo +- Pi/2 rads * radius, which then fills a solid in the draw funciton.
+        //Lines from origo +- Pi/2 rads * r, which then fills a solid in the draw funciton.
         //Only updates one segment per draw to make it more efficient, cycles through list
         obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
         obj.tail[obj.tail_curr_segment] = {
-            x0: (Math.cos((obj.deg + 90) * (Math.PI / 180))) * obj.radius + obj.x,
-            x1: (Math.cos((obj.deg - 90) * (Math.PI / 180))) * obj.radius + obj.x,
-            y0: (Math.sin((obj.deg + 90) * (Math.PI / 180))) * obj.radius + obj.y,
-            y1: (Math.sin((obj.deg - 90) * (Math.PI / 180))) * obj.radius + obj.y
+            x0: (Math.cos((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.x,
+            x1: (Math.cos((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.x,
+            y0: (Math.sin((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.y,
+            y1: (Math.sin((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.y
         };
         obj.tail_curr_segment++;
+    }
+
+    function update_bounding_box(obj){
+
+        let bbox_head = {
+                x0: obj.x - obj.r,
+                y0: obj.y - obj.r,
+                x1: obj.x + obj.r,
+                y1: obj.y - obj.r,
+                x2: obj.x + obj.r,
+                y2: obj.y + obj.r,
+                x3: obj.x - obj.r,
+                y3: obj.y + obj.r
+        }, 
+            bbox = [],
+            curr_s = obj.tail_curr_segment,
+            len_s = obj.tail.length, 
+            start_bb = 0,
+            end_bb = 0,
+            am_full_bb = Math.floor(len_s / BOUNDING_BOX_SEGMENT_SIZE);
+
+        bbox.push(bbox_head);
+
+        for(let i = 0; i < am_full_bb - 1; i ++){
+            start_bb = (curr_s + i * BOUNDING_BOX_SEGMENT_SIZE) % len_s;
+            end_bb = (curr_s + (i + 1) * BOUNDING_BOX_SEGMENT_SIZE) % len_s;
+            bbox.push({
+                x0: obj.tail[start_bb].x0,
+                y0: obj.tail[start_bb].y0,
+                x1: obj.tail[start_bb].x1,
+                y1: obj.tail[start_bb].y1,
+                x2: obj.tail[end_bb].x1,
+                y2: obj.tail[end_bb].y1,
+                x3: obj.tail[end_bb].x0,
+                y3: obj.tail[end_bb].y0,
+            });
+        }
+
+        obj.bounding_box = bbox;
+    }
+
+    function line_intersection(x0,y0,x1,y1,x2,y2,x3,y3){
+        let s, t, Px, Py,
+            s1_x = x1 - x0,
+            s1_y = y1 - y0,
+            s2_x = x3 - x2,
+            s2_y = y3 - y2;
+
+        s = (-s1_y * (x0 - x2) + s1_x * (y0 - y2))/(-s2_x * s1_y + s1_x * s2_y);
+        t = ( s2_x * (y0 - y2) - s2_y * (x0 - x2))/(-s2_x * s1_y + s1_x * s2_y);
+
+        if(s >= 0 && s <= 1 && t >= 0 && t <= 1){
+            Px = x0 + (t * s1_x);
+            Py = y0 + (t * s1_y);
+
+            return {hit_x: Px,hit_y: Py};
+        }else{
+            return 0;
+        }
+    }
+
+    function line_intersect_box(box, line){
+        let b_line_0 = {
+            x0: box.x0,
+            y0: box.y0,
+            x1: box.x1,
+            y1: box.y0
+        },b_line_1 = {
+            x0: box.x1,
+            y0: box.y0,
+            x1: box.x1,
+            y1: box.y1
+        },b_line_2 = {
+            x0: box.x1,
+            y0: box.y1,
+            x1: box.x0,
+            y1: box.y1
+        },b_line_3 = {
+            x0: box.x0,
+            y0: box.y1,
+            x1: box.x0,
+            y1: box.y0},
+            res = [],
+            ret;
+
+            res.push(line_intersection(b_line_0.x0, b_line_0.y0, b_line_0.x1, b_line_0.y1, line.x0, line.y0, line.x1, line.y1));
+            res.push(line_intersection(b_line_1.x0, b_line_1.y0, b_line_1.x1, b_line_1.y1, line.x0, line.y0, line.x1, line.y1));
+            res.push(line_intersection(b_line_2.x0, b_line_2.y0, b_line_2.x1, b_line_2.y1, line.x0, line.y0, line.x1, line.y1));
+            res.push(line_intersection(b_line_3.x0, b_line_3.y0, b_line_3.x1, b_line_3.y1, line.x0, line.y0, line.x1, line.y1));
+            
+            ret = res[0];
+
+            for(let i = 1; i < res.length; i++){
+                if(res[i] != 0){
+                    let d0 = ((line.x0 - ret.hit_x)**2      + (line.y0 - ret.hit_y)**2)**(1/2),
+                        d1 = ((line.x0 - res[i].hit_x)**2   + (line.y0 - res[i].hit_y)**2)**(1/2);
+                    
+                    ret = d0 < d1 ? ret : res[i];
+                }
+            }
+
+            return ret;
     }
 
     function update_sensors(obj, deg) {
@@ -224,26 +330,45 @@
                 hit = hyp_1 < hyp_2 ? hyp_1 : hyp_2;
             }
 
-            apple_list.forEach(apple => {
-                /* 
-                    Solution 1:
-                        1. Bounding box
-                        2. Get subsection of render surrounding bounding box if sensor is near 
-                            Problem: Potentially SENSOR_AMOUNT of subsections of render, could be heavy
-                        3. Calculate line intersection point
-                            Problem: Mathy as fucking fuck.
-                        4. Probe line in bounding box (worst case w pixels probed, worst case bounding box largest size)
-                        5. Return hit if hit
-                
-                    Solution 2:
+            let line_check = {
+                x0: obj.x,
+                y0: obj.y,
+                x1: hit_x,
+                y1: hit_y
+            }, ret, w_ret, d0, d1, t_hit = 0;
 
-                    Some sort of raytracing method. The line is a ray. How does it know if it has hit a foreign object?
-                        1. ...
+            apple_list.forEach(a => {
+                ret = line_intersect_box(a.bounding_box, line_check);
+                if(ret){        
+                    t_hit = 1;               
+                    hit_x = ret.hit_x;
+                    hit_y = ret.hit_y;
+                    hit = ((obj.x - ret.hit_x)**2+(obj.y - ret.hit_y)**2)**(1/2);
+                }
+            });
+            
+            player_list.forEach(p => {                
+                for(let i = 0; i < p.bounding_box.length; i++){
+                    
+                    if(p.id === obj.id && i === 0) i++; //Skip looking at the bounding box head if the object is comparing it's own tail (otherwise sensors wouldnt see out)
+                    if(i < p.bounding_box.length) w_ret = line_intersect_box(p.bounding_box[i], line_check);
+                    
 
-                    Solution 3:
-                    Use this https://jsfiddle.net/nLMTW/
-                */
-
+                    if(w_ret){
+                        t_hit = 1;
+                        
+                        
+                        //Hit. Is the hit closer than any current result?
+                        d0 = ((obj.x - hit_x)**2+(obj.y - hit_y)**2)**(1/2);
+                        d1 = ((obj.x - w_ret.hit_x)**2+(obj.y - w_ret.hit_y)**2)**(1/2);
+                        if(d1 < d0){
+                            hit = d1;
+                            hit_x = w_ret.hit_x;
+                            hit_y = w_ret.hit_y;
+                            ret = w_ret;
+                        }
+                    }
+                }
             });
 
             sensor.hit_length = hit;
@@ -259,8 +384,8 @@
             hit_enemy = 0;
 
         //Out of bounds calculations.
-        if (next_x >= w - obj.radius || next_x <= 0 + obj.radius) oob_x = 1;
-        if (next_y >= h - obj.radius || next_y <= 0 + obj.radius) oob_y = 1;
+        if (next_x >= w - obj.r || next_x <= 0 + obj.r) oob_x = 1;
+        if (next_y >= h - obj.r || next_y <= 0 + obj.r) oob_y = 1;
 
         if (oob_x | oob_y) obj.state = STATE.DEAD;
 
@@ -306,6 +431,7 @@
                             if (moved) {
                                 update_tail(obj);
                                 update_sensors(obj, angle_change);
+                                update_bounding_box(obj);
                             }
                             break;
 
@@ -354,31 +480,16 @@
         for (const obj of objects) {
             switch (obj.type) {
                 case "player":
+                    //draw player draw snake
                     ctx.fillStyle = obj.color;
                     ctx.strokeStyle = obj.color;
 
                     //Draw circle
                     ctx.beginPath();
-                    ctx.arc(obj.x, obj.y, obj.radius, 0, 2 * Math.PI, false);
+                    ctx.arc(obj.x, obj.y, obj.r, 0, 2 * Math.PI, false);
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
-
-                    //Draw sensors (Debug only)
-                    if (DEBUG) {
-                        ctx.fillStyle = "white";
-                        ctx.strokeStyle = "white";
-                        obj.linear_sensors.forEach(sen => {
-                            ctx.beginPath();
-                            ctx.moveTo(obj.x, obj.y);
-                            ctx.lineTo(sen.hit_x, sen.hit_y);
-                            ctx.closePath();
-                            ctx.stroke();
-                        });
-
-                        ctx.fillStyle = obj.color;
-                        ctx.strokeStyle = obj.color;
-                    }
 
                     //Draw tail
                     ctx.beginPath();
@@ -409,17 +520,57 @@
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
+
+                    
+
+                    //Draw debug objects
+                    if (DEBUG) {
+                        ctx.fillStyle = "white";
+                        ctx.strokeStyle = "white";
+                        obj.linear_sensors.forEach(sen => {
+                            ctx.beginPath();
+                            ctx.moveTo(obj.x, obj.y);
+                            ctx.lineTo(sen.hit_x, sen.hit_y);
+                            ctx.closePath();
+                            ctx.stroke();
+                        });
+                        obj.bounding_box.forEach(box => {
+                            ctx.beginPath();
+                            ctx.moveTo(box.x0, box.y0);
+                            ctx.lineTo(box.x1, box.y1);
+                            ctx.lineTo(box.x2, box.y2);
+                            ctx.lineTo(box.x3, box.y3);
+                            ctx.lineTo(box.x0, box.y0);
+                            ctx.closePath();
+                            ctx.stroke();
+                        });
+
+                        ctx.fillStyle = obj.color;
+                        ctx.strokeStyle = obj.color;
+                    }
                     break;
 
                 case "apple":
-                    //Draw circle
+                    //draw apple
                     ctx.fillStyle = obj.color;
                     ctx.strokeStyle = obj.color;
                     ctx.beginPath();
-                    ctx.arc(obj.x, obj.y, obj.radius, 0, 2 * Math.PI, false);
+                    ctx.arc(obj.x, obj.y, obj.r, 0, 2 * Math.PI, false);
                     ctx.closePath();
                     ctx.fill();
-                    ctx.stroke();                   
+                    ctx.stroke();
+                    
+                    if(DEBUG){
+                        ctx.fillStyle = "white";
+                        ctx.strokeStyle = "white";
+
+                        ctx.rect(obj.bounding_box.x0, obj.bounding_box.y0,
+                            obj.bounding_box.x1 - obj.bounding_box.x0, obj.bounding_box.y1 - obj.bounding_box.y0);
+                        ctx.stroke();
+
+                        ctx.fillStyle = obj.color;
+                        ctx.strokeStyle = obj.color;
+                    }
                     
                     break;
 
@@ -514,7 +665,7 @@
         }
     }
 
-    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, radius, tail_length, sensor_amount) {
+    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, r, tail_length, sensor_amount) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -526,16 +677,17 @@
         p.deg = deg;
         p.turn_speed = turn_speed;
         p.color = color;
-        p.radius = radius;
+        p.r = r;
         p.tail = [];
         p.tail_length = tail_length;
         p.sensor_amount = sensor_amount;
         p.linear_sensors = [];
         init_sensors(p, deg);
         list.push(p);
+        player_list.push(p);
     }
 
-    function add_static_obj(list, id, type, STATE, x, y, color, radius) {
+    function add_static_obj(list, id, type, STATE, x, y, color, r) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -543,7 +695,13 @@
         p.x = x;
         p.y = y;
         p.color = color;
-        p.radius = radius;
+        p.r = r;
+        p.bounding_box = {
+            x0: x - r,
+            y0: y - r,
+            x1: x + r,
+            y1: y + r
+        };
         list.push(p);
         return p;
     }
@@ -648,7 +806,7 @@
 
         for (let i = 0; i < apples; i++) {
             if (DEBUG) {
-                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, 530, h / 2, "green", 5));
+                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, 530, 500, "green", 5));
             } else {
                 apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5));
             }
