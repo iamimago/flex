@@ -1,10 +1,18 @@
-/* Main javascript file. Used for initialization of stuff.*/
+/* 
+    Achtung AI: A AI based snake background animaiton. 
+
+    TODO: 
+        * Collision detection system
+        * Scoreboard
+        * Game over screen
+        * 
+*/
+
 'use strict';
 
 (() => {
-    let w,
-        h,
-        canvas,
+    let w = window.innerWidth,
+        h = window.innerHeight,
         ctx,
         objects = [],
         player_list = [],
@@ -13,17 +21,23 @@
         next_x,
         next_y,
         reset,
-        game_mode,
-        probe_x, probe_y;
+        score_update = 1,
+        game_mode;
 
     const SENSOR_ANGLE = 160,
-        PLAYERS = 2,
+        PLAYERS = 1,
         APPLES = 1,
         COLORS = ["red", "blue", "purple", "yellow", "orange"],
         DEBUG = 1,
-        DEBUG_POS_X = [100, 2 * window.innerWidth / 8],
-        DEBUG_POS_Y = [700, 500],
-        DEBUG_ANGLE = [0, 180],
+        DEBUG_VERBOSE = 0,
+        DEBUG_POS_X = [w/2, 1000],
+        DEBUG_POS_Y = [h/2, 600],
+        DEBUG_APPLE_POS_X = [w/4, 400],
+        DEBUG_APPLE_POS_Y = [h/2, 500],
+        DEBUG_ANGLE = [180, 180],
+        SCORE_UPDATE = 1,
+        SCORE_UPDATE_TIME = 100,
+        SCORE_APPLE = 500,
         MODES = {
             PLAYER: 0,
             AI: 1
@@ -34,14 +48,14 @@
             FROZEN: 1,
             DEAD: 2
         },
-        DEFAULT_TAIL_LENGTH = 200,
+        DEFAULT_TAIL_LENGTH = 50,
         DEFAULT_SPEED = 1,
         DEFAULT_TURN_SPEED = 3,
         MIN_FPS = 60,
         FPS_REPORT = 1,
         FPS_REPORT_FREQUENCY = 2,
-        AI_SENSORS = 3,
-        BOUNDING_BOX_SEGMENT_SIZE = 20;
+        AI_SENSORS = 7,
+        HITBOX_SEGMENT_SIZE = 15;
 
     entity = {
         id: -1,
@@ -53,7 +67,7 @@
         y: -1,
         angle: -1,
         r: -1,
-        bounding_box: [],
+        hitbox: [],
         linear_sensors: [],
         sensor_amount: 1,
         tail: [],
@@ -74,15 +88,37 @@
         return ret;
     }
 
+    function mod_addition(x, y, max, min) {
+        let ret = x + y;
+
+        //x || y is negative
+
+        if (ret < min) {
+            ret = max - (min - ret);
+
+            //If result is STILL less than min, return minimum value
+            if (ret < min) {
+                ret = ret < min ? min : ret;
+                console.warn(`Warning: mod_addition returning incorrect value (min value) since value is below min value after modular corrections. Min value returned: ${min}`);
+            }
+        }
+
+        //x + y > max
+        ret = ret >= max ? (ret - max) + min : ret;
+        return ret;
+    }
+
     function deg_to_rad(deg) {
         return ((Math.PI) / 180) * deg;
     }
 
     function plog(print) {
-        if(print != undefined){
+        if (print === "o") {
+            console.log(objects);
+        } else if (print != undefined) {
             console.log(print);
         }
-        console.log(objects);
+
         alert("Paused");
     }
 
@@ -90,7 +126,7 @@
         document.addEventListener('keydown', (event) => {
             const keyName = event.key;
             if (keyName == 'p') {
-                plog();
+                plog("o");
             }
             if (keyName == 'a') {
                 objects[0].move_left = true;
@@ -120,132 +156,283 @@
         }, false);
     }
 
-    function increase_tail(p, am) {
-        let end_tail = p.tail_curr_segment;
-        end_tail >= p.tail_curr_segment ? 0 : end_tail;
-
-        let temp_tail = [];
-        for (let i = 0; i < p.tail_length; i++) {
-            temp_tail[i] = p.tail[(end_tail + i) % p.tail_length];
-        }
-        p.tail_curr_segment = p.tail_length;
-        p.tail_length += am;
-        p.tail = temp_tail;
-    }
-
-    function update_tail(obj) {
-        //Lines from origo +- Pi/2 rads * r, which then fills a solid in the draw funciton.
-        //Only updates one segment per draw to make it more efficient, cycles through list
-        obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
-        obj.tail[obj.tail_curr_segment] = {
-            x0: (Math.cos((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.x,
-            x1: (Math.cos((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.x,
-            y0: (Math.sin((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.y,
-            y1: (Math.sin((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.y
-        };
-        obj.tail_curr_segment++;
-    }
-
-    function update_bounding_box(obj){
-
-        let bbox_head = {
-                x0: obj.x - obj.r,
-                y0: obj.y - obj.r,
-                x1: obj.x + obj.r,
-                y1: obj.y - obj.r,
-                x2: obj.x + obj.r,
-                y2: obj.y + obj.r,
-                x3: obj.x - obj.r,
-                y3: obj.y + obj.r
-        }, 
-            bbox = [],
-            curr_s = obj.tail_curr_segment,
-            len_s = obj.tail.length, 
-            start_bb = 0,
-            end_bb = 0,
-            am_full_bb = Math.floor(len_s / BOUNDING_BOX_SEGMENT_SIZE);
-
-        bbox.push(bbox_head);
-
-        for(let i = 0; i < am_full_bb - 1; i ++){
-            start_bb = (curr_s + i * BOUNDING_BOX_SEGMENT_SIZE) % len_s;
-            end_bb = (curr_s + (i + 1) * BOUNDING_BOX_SEGMENT_SIZE) % len_s;
-            bbox.push({
-                x0: obj.tail[start_bb].x0,
-                y0: obj.tail[start_bb].y0,
-                x1: obj.tail[start_bb].x1,
-                y1: obj.tail[start_bb].y1,
-                x2: obj.tail[end_bb].x1,
-                y2: obj.tail[end_bb].y1,
-                x3: obj.tail[end_bb].x0,
-                y3: obj.tail[end_bb].y0,
-            });
-        }
-
-        obj.bounding_box = bbox;
-    }
-
-    function line_intersection(x0,y0,x1,y1,x2,y2,x3,y3){
+    function line_intersection(x0, y0, x1, y1, x2, y2, x3, y3) {
         let s, t, Px, Py,
             s1_x = x1 - x0,
             s1_y = y1 - y0,
             s2_x = x3 - x2,
             s2_y = y3 - y2;
 
-        s = (-s1_y * (x0 - x2) + s1_x * (y0 - y2))/(-s2_x * s1_y + s1_x * s2_y);
-        t = ( s2_x * (y0 - y2) - s2_y * (x0 - x2))/(-s2_x * s1_y + s1_x * s2_y);
+        s = (-s1_y * (x0 - x2) + s1_x * (y0 - y2)) / (-s2_x * s1_y + s1_x * s2_y);
+        t = (s2_x * (y0 - y2) - s2_y * (x0 - x2)) / (-s2_x * s1_y + s1_x * s2_y);
 
-        if(s >= 0 && s <= 1 && t >= 0 && t <= 1){
+        if (s >= 0 && s <= 1 && t >= 0 && t <= 1) {
             Px = x0 + (t * s1_x);
             Py = y0 + (t * s1_y);
-
-            return {hit_x: Px,hit_y: Py};
-        }else{
+            length = ((Px - x2) ** 2 + (Py - y2) ** 2) ** (1 / 2);
+            return {
+                hit_x: Px,
+                hit_y: Py,
+                len: ((Px - x2) ** 2 + (Py - y2) ** 2) ** (1 / 2)
+            };
+        } else {
             return 0;
         }
     }
 
-    function line_intersect_box(box, line){
-        let b_line_0 = {
-            x0: box.x0,
-            y0: box.y0,
-            x1: box.x1,
-            y1: box.y0
-        },b_line_1 = {
-            x0: box.x1,
-            y0: box.y0,
-            x1: box.x1,
-            y1: box.y1
-        },b_line_2 = {
-            x0: box.x1,
-            y0: box.y1,
-            x1: box.x0,
-            y1: box.y1
-        },b_line_3 = {
-            x0: box.x0,
-            y0: box.y1,
-            x1: box.x0,
-            y1: box.y0},
-            res = [],
-            ret;
+    /* 
+        Box: p_min p_max forming a square. Converts into polyline, then checks the interceptions of the polyline
+        Poly: an array of lines. The function checks every line individually in the polyline object.
+    */
+    function line_intersects_object(obj, line) {
+        let res, ret = 0,
+            box_poly = [];
+        if (typeof obj === "undefined" || typeof obj.type === "undefined") return ret;
 
-            res.push(line_intersection(b_line_0.x0, b_line_0.y0, b_line_0.x1, b_line_0.y1, line.x0, line.y0, line.x1, line.y1));
-            res.push(line_intersection(b_line_1.x0, b_line_1.y0, b_line_1.x1, b_line_1.y1, line.x0, line.y0, line.x1, line.y1));
-            res.push(line_intersection(b_line_2.x0, b_line_2.y0, b_line_2.x1, b_line_2.y1, line.x0, line.y0, line.x1, line.y1));
-            res.push(line_intersection(b_line_3.x0, b_line_3.y0, b_line_3.x1, b_line_3.y1, line.x0, line.y0, line.x1, line.y1));
-            
-            ret = res[0];
+        switch (obj.type) {
+            case "box_simple":
+                box_poly = [{
+                    x0: obj.x0,
+                    y0: obj.y0,
+                    x1: obj.x1,
+                    y1: obj.y0
+                }, {
+                    x0: obj.x1,
+                    y0: obj.y0,
+                    x1: obj.x1,
+                    y1: obj.y1
+                }, {
+                    x0: obj.x1,
+                    y0: obj.y1,
+                    x1: obj.x0,
+                    y1: obj.y1
+                }, {
+                    x0: obj.x0,
+                    y0: obj.y1,
+                    x1: obj.x0,
+                    y1: obj.y0
+                }];
 
-            for(let i = 1; i < res.length; i++){
-                if(res[i] != 0){
-                    let d0 = ((line.x0 - ret.hit_x)**2      + (line.y0 - ret.hit_y)**2)**(1/2),
-                        d1 = ((line.x0 - res[i].hit_x)**2   + (line.y0 - res[i].hit_y)**2)**(1/2);
-                    
-                    ret = d0 < d1 ? ret : res[i];
+
+                res = line_intersect_polygon(box_poly, line);
+                if (res != 0) {
+                    if (ret == 0) {
+                        ret = res;
+                    } else {
+                        ret = res.len < ret.len ? res : ret;
+                    }
+                }
+                break;
+
+            case "box":
+                box_poly = [{
+                    x0: obj.x0,
+                    y0: obj.y0,
+                    x1: obj.x1,
+                    y1: obj.y1
+                }, {
+                    x0: obj.x1,
+                    y0: obj.y1,
+                    x1: obj.x2,
+                    y1: obj.y2
+                }, {
+                    x0: obj.x2,
+                    y0: obj.y2,
+                    x1: obj.x3,
+                    y1: obj.y3
+                }, {
+                    x0: obj.x3,
+                    y0: obj.y3,
+                    x1: obj.x0,
+                    y1: obj.y0
+                }];
+
+
+                res = line_intersect_polygon(box_poly, line);
+                if (res != 0) {
+                    if (ret == 0) {
+                        ret = res;
+                    } else {
+                        ret = res.len < ret.len ? res : ret;
+                    }
+                }
+                break;
+
+
+            case "poly":
+                ret = line_intersect_polygon(obj, line);
+                break;
+
+            default:
+                throw "Trying to check interseption of object without a type.";
+
+                break;
+        }
+
+        return ret;
+    }
+
+    function line_intersect_polygon(poly, line) {
+        let res, ret = 0;
+
+        if (poly.length > 0) {
+            poly.forEach(p_line => {
+                res = line_intersection(p_line.x0, p_line.y0, p_line.x1, p_line.y1, line.x0, line.y0, line.x1, line.y1);
+
+                if (res != 0) {
+                    if (ret != 0) {
+                        ret = res.len < ret.len ? res : ret;
+                    } else {
+                        ret = res;
+                    }
+                }
+            });
+        } else {
+            let p_line = poly;
+
+            res = line_intersection(p_line.x0, p_line.y0, p_line.x1, p_line.y1, line.x0, line.y0, line.x1, line.y1);
+            if (res != 0) {
+                if (ret.len != 0) {
+                    ret = res.len < ret.len ? res : ret;
+                } else {
+                    ret = res;
                 }
             }
+        }
 
-            return ret;
+        return ret;
+    }
+
+    function update_hitbox(ent){
+        switch (ent.type) {
+            case "player":
+                update_hitbox_player(ent);
+                break;
+
+            case "apple":
+                ent.hitbox[0].x0 = ent.x - ent.r;
+                ent.hitbox[0].y0 = ent.y - ent.r;
+                ent.hitbox[0].x1 = ent.x + ent.r;
+                ent.hitbox[0].y1 = ent.y + ent.r;
+                break;
+        
+            default:
+                break;
+        }
+    }
+
+    function update_hitbox_player(obj) {
+        let hbox_head = [{
+                x0: obj.x + obj.r * Math.cos(deg_to_rad(obj.deg - 90)) + obj.r * Math.cos(deg_to_rad(obj.deg)),
+                y0: obj.y + obj.r * Math.sin(deg_to_rad(obj.deg - 90)) + obj.r * Math.sin(deg_to_rad(obj.deg)),
+                x1: obj.x + obj.r * Math.cos(deg_to_rad(obj.deg + 90)) + obj.r * Math.cos(deg_to_rad(obj.deg)),
+                y1: obj.y + obj.r * Math.sin(deg_to_rad(obj.deg + 90)) + obj.r * Math.sin(deg_to_rad(obj.deg))
+            }],
+            hbox = [],
+            hbox_tail = [],
+            next_s = 0,
+            head_segment = obj.tail_curr_segment - 1,
+            tail_segment = obj.tail_curr_segment % obj.tail.length,
+            curr_s = tail_segment,
+            len_s = obj.tail.length,
+            amount = Math.floor(len_s / HITBOX_SEGMENT_SIZE),
+            min_x = w,
+            min_y = h,
+            max_x = 0,
+            max_y = 0;
+
+        hbox_head.hbox_type = "head";
+        hbox_head.type = "poly";
+        hbox.push(hbox_head);
+
+        if (len_s < 1 || typeof obj.tail[tail_segment] === 'undefined') return 0;
+
+        //Update tail hitbox. 
+        hbox_tail.push({
+            x0: obj.tail[tail_segment].x0,
+            y0: obj.tail[tail_segment].y0,
+            x1: obj.tail[tail_segment].x1,
+            y1: obj.tail[tail_segment].y1,
+        });
+        //For each segment, take both sides of the lines. Making a |   | segment where the top is curr_s and the bottom is next_s.
+        for (let i = 1; i < amount; i++) {
+            next_s = mod_addition(curr_s, HITBOX_SEGMENT_SIZE, obj.tail.length, 0);
+            hbox_tail.push({
+                x0: obj.tail[curr_s].x0,
+                y0: obj.tail[curr_s].y0,
+                x1: obj.tail[next_s].x0,
+                y1: obj.tail[next_s].y0,
+            });
+            hbox_tail.push({
+                x0: obj.tail[next_s].x1,
+                y0: obj.tail[next_s].y1,
+                x1: obj.tail[curr_s].x1,
+                y1: obj.tail[curr_s].y1,
+            });
+            curr_s = next_s;
+        }
+        //Add lines up until the head to fill in the gaps. This looks slightly glitchy at times. Also crude solution to ensure that the hitbox doesn't hit itself. Precision shouldn't be an issue here at any case.
+        hbox_tail.push({
+            x0: obj.tail[curr_s].x0,
+            y0: obj.tail[curr_s].y0,
+            x1: obj.tail[mod_addition(head_segment, -5, obj.tail.length, 0)].x0,
+            y1: obj.tail[mod_addition(head_segment, -5, obj.tail.length, 0)].y0,
+        });
+
+        hbox_tail.push({
+            x0: obj.tail[curr_s].x1,
+            y0: obj.tail[curr_s].y1,
+            x1: obj.tail[mod_addition(head_segment, -5, obj.tail.length, 0)].x1,
+            y1: obj.tail[mod_addition(head_segment, -5, obj.tail.length, 0)].y1,
+        });
+
+        hbox_tail.type = "poly";
+        hbox_tail.hbox_type = "tail";
+
+        hbox.push(hbox_tail);
+
+        //Update bounding box.
+
+        for (let i = 0; i < hbox_head.length; i++) {
+            let el = hbox_head[i];
+            min_x = el.x0 < min_x ? el.x0 : min_x;
+            min_x = el.x1 < min_x ? el.x1 : min_x;
+            max_x = el.x0 > max_x ? el.x0 : max_x;
+            max_x = el.x1 > max_x ? el.x1 : max_x;
+
+            min_y = el.y0 < min_y ? el.y0 : min_y;
+            min_y = el.y1 < min_y ? el.y1 : min_y;
+            max_y = el.y0 > max_y ? el.y0 : max_y;
+            max_y = el.y1 > max_y ? el.y1 : max_y;
+        }
+
+        for (let i = 0; i < obj.tail.length; i++) {
+            let el = obj.tail[i];
+            min_x = el.x0 < min_x ? el.x0 : min_x;
+            min_x = el.x1 < min_x ? el.x1 : min_x;
+            max_x = el.x0 > max_x ? el.x0 : max_x;
+            max_x = el.x1 > max_x ? el.x1 : max_x;
+
+            min_y = el.y0 < min_y ? el.y0 : min_y;
+            min_y = el.y1 < min_y ? el.y1 : min_y;
+            max_y = el.y0 > max_y ? el.y0 : max_y;
+            max_y = el.y1 > max_y ? el.y1 : max_y;
+        }
+
+        hbox.push({
+            x0: min_x,
+            y0: min_y,
+            x1: max_x,
+            y1: min_y,
+            x2: max_x,
+            y2: max_y,
+            x3: min_x,
+            y3: max_y,
+            type: "box",
+            hbox_type: "bounding_box"
+        });
+
+        obj.hitbox = hbox;
     }
 
     function update_sensors(obj, deg) {
@@ -255,7 +442,7 @@
             hyp_1 = 0,
             hyp_2 = 0,
             s_deg = 0,
-            hit_x, hit_y;
+            hit_x, hit_y, t_hit = 0;
 
         obj.linear_sensors.forEach(sensor => {
             sensor.deg = modular_angle_addition(sensor.deg, deg);
@@ -331,41 +518,48 @@
             }
 
             let line_check = {
-                x0: obj.x,
-                y0: obj.y,
-                x1: hit_x,
-                y1: hit_y
-            }, ret, w_ret, d0, d1, t_hit = 0;
+                    x0: obj.x,
+                    y0: obj.y,
+                    x1: hit_x,
+                    y1: hit_y
+                },
+                ret, w_ret;
 
             apple_list.forEach(a => {
-                ret = line_intersect_box(a.bounding_box, line_check);
-                if(ret){        
-                    t_hit = 1;               
-                    hit_x = ret.hit_x;
-                    hit_y = ret.hit_y;
-                    hit = ((obj.x - ret.hit_x)**2+(obj.y - ret.hit_y)**2)**(1/2);
+                ret = line_intersects_object(a.hitbox[0], line_check);
+                if (ret) {
+                    if (ret.len < hit) {
+                        hit_x = ret.hit_x;
+                        hit_y = ret.hit_y;
+                        hit = ((obj.x - ret.hit_x) ** 2 + (obj.y - ret.hit_y) ** 2) ** (1 / 2);
+                    }
                 }
             });
-            
-            player_list.forEach(p => {                
-                for(let i = 0; i < p.bounding_box.length; i++){
-                    
-                    if(p.id === obj.id && i === 0) i++; //Skip looking at the bounding box head if the object is comparing it's own tail (otherwise sensors wouldnt see out)
-                    if(i < p.bounding_box.length) w_ret = line_intersect_box(p.bounding_box[i], line_check);
-                    
 
-                    if(w_ret){
-                        t_hit = 1;
-                        
-                        
-                        //Hit. Is the hit closer than any current result?
-                        d0 = ((obj.x - hit_x)**2+(obj.y - hit_y)**2)**(1/2);
-                        d1 = ((obj.x - w_ret.hit_x)**2+(obj.y - w_ret.hit_y)**2)**(1/2);
-                        if(d1 < d0){
-                            hit = d1;
+            let p_hit = 0;
+            player_list.forEach(p => {
+                //If it doesn't hit the outer bounding box: continue. This decreases amount of potential computations significantly
+                if (line_intersects_object(p.hitbox[2], line_check) != 0) {
+
+                    if (p.id !== obj.id) {
+                        w_ret = line_intersects_object(p.hitbox[0], line_check);
+                        if (w_ret != 0) {
+                            p_hit = 1;
+                        }
+                        if (w_ret.len < hit) {
+                            hit = w_ret.len;
                             hit_x = w_ret.hit_x;
                             hit_y = w_ret.hit_y;
-                            ret = w_ret;
+                        }
+                    } else {
+                        w_ret = line_intersects_object(p.hitbox[1], line_check);
+                        if (w_ret != 0) {
+                            p_hit = 1;
+                        }
+                        if (w_ret.len < hit) {
+                            hit = w_ret.len;
+                            hit_x = w_ret.hit_x;
+                            hit_y = w_ret.hit_y;
                         }
                     }
                 }
@@ -375,6 +569,57 @@
             sensor.hit_x = hit_x;
             sensor.hit_y = hit_y;
         });
+    }
+
+    function update_tail(obj) {
+        //Lines from origo +- Pi/2 rads * r, which then fills a solid in the draw funciton.
+        //Only updates one segment per draw to make it more efficient, cycles through list
+        obj.tail_curr_segment = obj.tail_curr_segment % obj.tail_length;
+        obj.tail[obj.tail_curr_segment] = {
+            x0: (Math.cos((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.x,
+            x1: (Math.cos((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.x,
+            y0: (Math.sin((obj.deg + 90) * (Math.PI / 180))) * obj.r + obj.y,
+            y1: (Math.sin((obj.deg - 90) * (Math.PI / 180))) * obj.r + obj.y
+        };
+        obj.tail_curr_segment++;
+    }
+
+    function point_hit_bounding_box(x, y){
+        objects.forEach(o => {
+            let b_box = o.hitbox[0];
+            switch (b_box.type) {
+                case "box_simple":
+                    if(x > b_box.x0 && x < b_box.x1 && y > b_box.y0 && y < b_box.y1) return 1;                   
+                    break;
+
+                
+                case "box":
+                    if(x > b_box.x0 && x < b_box.x3 && y > b_box.y0 && y < b_box.y3) return 1;
+                    break;
+            
+                default:
+                    break;
+            }
+        });
+
+        return 0;
+    }
+
+    function random_position(ent){
+        let x = w * Math.random(), y = h * Math.random();
+
+        while(point_hit_bounding_box(x, y)){
+            x = w * Math.random();
+            y = h * Math.random();
+        }
+        ent.x = w * Math.random();
+        ent.y = h * Math.random();
+        update_hitbox(ent);
+    }
+
+    function player_hit_apple(p, a){
+        increase_tail(p, SCORE_APPLE);
+        random_position(a);
     }
 
     function collision_detection(obj, next_x, next_y) {
@@ -392,12 +637,63 @@
         if (!oob_x) obj.x = next_x;
         if (!oob_y) obj.y = next_y;
 
+        /* 
+            Check every other objects bounding box first, if the hitbox head of the player hits any other objects bounding box: continue to see if it actually hits the other object (snakes are wiggly).
+
+            Line-line detect the 3 hitbox head lines with all the lines of the poly line tail, but only if hit bounding box.  
+        */
+        if (typeof obj.hitbox[0] !== "undefined") {
+            let ret;
+
+            obj.hitbox[0].forEach(head_line => {
+                objects.forEach(check_obj => {
+                    switch (check_obj.type) {
+                        case "player":
+                            //If the head hitbox of moving object hits any other bounding box: Continue the check.
+                            if (obj.id === check_obj.id) {
+                                if (ret = line_intersects_object(check_obj.hitbox[1], head_line)) {
+                                    obj.state = STATE.DEAD;
+                                }
+                            } else if (ret = line_intersects_object(check_obj.hitbox[2], head_line)) {
+                                if (ret = line_intersects_object(check_obj.hitbox[1], head_line)) {
+                                    if (DEBUG && DEBUG_VERBOSE) console.log(`Obj: ${obj.id} hit obj: ${check_obj.id} type: ${check_obj.hitbox[1].hbox_type} at x:y -> ${ret.hit_x}:${ret.hit_y}`);
+                                    
+                                }
+                            }
+                            break;
+
+                        case "apple":
+                            if (ret = line_intersects_object(check_obj.hitbox[0], head_line)) {
+                                player_hit_apple(obj, apple_list[check_obj.id]);
+                            }
+                            break;
+
+                        default:
+                            break;
+                    }
+                });
+            });
+        }
+
         if (hit_enemy || oob_x || oob_y) {
             obj.state = STATE.DEAD;
             return 0;
         } else {
             return 1;
         }
+    }
+
+    function increase_tail(p, am) {
+        let end_tail = p.tail_curr_segment;
+        end_tail >= p.tail.length ? 0 : end_tail;
+
+        let temp_tail = [];
+        for (let i = 0; i < p.tail.length; i++) {
+            temp_tail[i] = p.tail[(end_tail + i) % p.tail.length];
+        }
+        p.tail_curr_segment = p.tail.length;
+        p.tail_length += am;
+        p.tail = temp_tail;
     }
 
     function logic() {
@@ -431,7 +727,11 @@
                             if (moved) {
                                 update_tail(obj);
                                 update_sensors(obj, angle_change);
-                                update_bounding_box(obj);
+
+                                //Hack to keep the object from intersecting itself at every start
+                                if (obj.tail.length > 5) {
+                                    update_hitbox_player(obj);
+                                }
                             }
                             break;
 
@@ -475,8 +775,51 @@
         }
     }
 
+    function draw_hitbox(ctx, hitbox_arr) {
+
+        hitbox_arr.forEach(poly => {
+            ctx.beginPath();
+            switch (poly.type) {
+                case "box":
+                    ctx.moveTo(poly.x0, poly.y0);
+                    ctx.lineTo(poly.x1, poly.y1);
+                    ctx.lineTo(poly.x2, poly.y2);
+                    ctx.lineTo(poly.x3, poly.y3);
+                    ctx.lineTo(poly.x0, poly.y0);
+                    break;
+
+                case "box_simple":
+                    ctx.moveTo(poly.x0, poly.y0);
+                    ctx.lineTo(poly.x1, poly.y0);
+                    ctx.lineTo(poly.x1, poly.y1);
+                    ctx.lineTo(poly.x0, poly.y1);
+                    ctx.lineTo(poly.x0, poly.y0);
+                    break;
+
+                case "poly":
+                    // Line poly: consistent of a group of lines format {x0, y0, x1, y1}
+                    if (poly.length > 0) {
+                        poly.forEach(p_line => {
+                            ctx.moveTo(p_line.x0, p_line.y0);
+                            ctx.lineTo(p_line.x1, p_line.y1);
+                        });
+                    }
+
+                    break;
+                default:
+                    console.log(hitbox_arr);
+                    throw "Trying to draw hitbox without valid type";
+
+                    break;
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+        });
+    }
+
     function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, w, h);
         for (const obj of objects) {
             switch (obj.type) {
                 case "player":
@@ -521,8 +864,6 @@
                     ctx.fill();
                     ctx.stroke();
 
-                    
-
                     //Draw debug objects
                     if (DEBUG) {
                         ctx.fillStyle = "white";
@@ -534,16 +875,7 @@
                             ctx.closePath();
                             ctx.stroke();
                         });
-                        obj.bounding_box.forEach(box => {
-                            ctx.beginPath();
-                            ctx.moveTo(box.x0, box.y0);
-                            ctx.lineTo(box.x1, box.y1);
-                            ctx.lineTo(box.x2, box.y2);
-                            ctx.lineTo(box.x3, box.y3);
-                            ctx.lineTo(box.x0, box.y0);
-                            ctx.closePath();
-                            ctx.stroke();
-                        });
+                        draw_hitbox(ctx, obj.hitbox);
 
                         ctx.fillStyle = obj.color;
                         ctx.strokeStyle = obj.color;
@@ -559,25 +891,37 @@
                     ctx.closePath();
                     ctx.fill();
                     ctx.stroke();
-                    
-                    if(DEBUG){
+
+                    if (DEBUG) {
                         ctx.fillStyle = "white";
                         ctx.strokeStyle = "white";
 
-                        ctx.rect(obj.bounding_box.x0, obj.bounding_box.y0,
-                            obj.bounding_box.x1 - obj.bounding_box.x0, obj.bounding_box.y1 - obj.bounding_box.y0);
-                        ctx.stroke();
+                        draw_hitbox(ctx, obj.hitbox);
 
                         ctx.fillStyle = obj.color;
                         ctx.strokeStyle = obj.color;
                     }
-                    
+
                     break;
 
                 default:
                     console.log("Trying to draw INACTIVE obj:", obj);
                     break;
             }
+        }
+    }
+
+    function score_updater(score, time){
+
+        player_list.forEach(p => {
+            p.score += score;
+            increase_tail(p, score);
+        });
+
+        if(score_update){
+            setTimeout(() => {
+                score_updater(score, time)
+            }, time);
         }
     }
 
@@ -625,8 +969,8 @@
             first_run = 0;
         }
 
-        logic();
         if (!reset) {
+            logic();
             draw();
 
             //Ensures 60 fps, does spare calculations as it waits for new tick. On my computer, about 3M extra computations per second can be made instead of waiting. 
@@ -665,7 +1009,7 @@
         }
     }
 
-    function add_player(list, id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, r, tail_length, sensor_amount) {
+    function add_player(id, type, STATE, move_left, move_right, x, y, deg, turn_speed, color, r, tail_length, sensor_amount) {
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -673,7 +1017,7 @@
         p.move_left = move_left;
         p.move_right = move_right;
         p.x = x;
-        p.y = y;
+        p.y = y;        
         p.deg = deg;
         p.turn_speed = turn_speed;
         p.color = color;
@@ -682,12 +1026,17 @@
         p.tail_length = tail_length;
         p.sensor_amount = sensor_amount;
         p.linear_sensors = [];
+        p.hitbox = [];
+        p.score = 0;
         init_sensors(p, deg);
-        list.push(p);
+        objects.push(p);
         player_list.push(p);
+        return p;
     }
 
-    function add_static_obj(list, id, type, STATE, x, y, color, r) {
+    function add_apple(id, type, STATE, x, y, color, r) {
+        console.log("Adding apple");
+        
         let p = Object.create(entity);
         p.id = id;
         p.type = type;
@@ -696,44 +1045,47 @@
         p.y = y;
         p.color = color;
         p.r = r;
-        p.bounding_box = {
+        p.hitbox = [{
             x0: x - r,
             y0: y - r,
             x1: x + r,
-            y1: y + r
-        };
-        list.push(p);
+            y1: y + r,
+            type: "box_simple"
+        }];
+        objects.push(p);
+        apple_list.push(p);
         return p;
     }
 
-    function reset_positions() {
-        let i = 0,
-            obj;
-        for (; i < PLAYERS; i++) {
-            obj = objects[i];
-            obj.state = STATE.MOVING;
-            obj.tail.length = 0;
-            obj.tail_curr_segment = 0;
-            obj.tail_length = DEFAULT_TAIL_LENGTH;
-            if (DEBUG) {
-                obj.x = DEBUG_POS_X[i];
-                obj.y = DEBUG_POS_Y[i];
-                obj.deg = DEBUG_ANGLE[i];
-                obj.linear_sensors.length = 0;
-            } else {
-                obj.x = Math.random() * w;
-                obj.y = Math.random() * h;
-                obj.deg = Math.random() * 360;
-                obj.linear_sensors.length = 0;
-            }
-            init_sensors(obj, obj.deg);
-        }
+    function reset_game() {
 
-        let n = i + APPLES;
-        for (; i < n; i++) {
-            obj.x = Math.random() * w;
-            obj.y = Math.random() * h;
-        }
+        player_list.forEach(player => {
+            player.state = STATE.MOVING;
+            player.tail.length = 0;
+            player.tail_curr_segment = 0;
+            player.tail_length = DEFAULT_TAIL_LENGTH;
+            player.hitbox.length = 0;
+            player.score = 0;
+            if (DEBUG) {
+                player.x = DEBUG_POS_X[player.id];
+                player.y = DEBUG_POS_Y[player.id];
+                player.deg = DEBUG_ANGLE[player.id];
+                player.linear_sensors.length = 0;
+            } else {
+                player.x = Math.random() * w;
+                player.y = Math.random() * h;
+                player.deg = Math.random() * 360;
+                player.linear_sensors.length = 0;
+            }
+            update_hitbox_player(player);
+            init_sensors(player, player.deg);
+        });
+
+        apple_list.forEach(apple => {
+            apple.x = Math.random() * w;
+            apple.y = Math.random() * h;
+
+        });
     }
 
     function end_screen() {
@@ -745,13 +1097,14 @@
     }
 
     function game_over() {
+        score_update = 0;
         if (game_mode = MODES.PLAYER) {
             end_screen();
         } else if (game_mode = MODES.AI) {
             post_processing_ai();
             restart_game();
         } else {
-            console.log("game_mode error in game_over");
+            throw "Gamemode invalid"
         }
     }
 
@@ -759,10 +1112,23 @@
         window.requestAnimationFrame(step);
     }
 
+    let reset_active = 0;
+
     function restart_game() {
-        reset_positions();
+        reset_game();
         reset = 0;
+        reset_active = 1;
+        score_updater(SCORE_UPDATE, SCORE_UPDATE_TIME);
         window.requestAnimationFrame(step);
+    }
+
+    function init_DOMS() {
+
+        let canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        ctx = canvas.getContext('2d');
+        document.getElementsByClassName('background-container')[0].appendChild(canvas);
     }
 
     function init_tensorflow() {
@@ -794,47 +1160,36 @@
     }
 
     function init_game(players, apples) {
-        let id = 0;
         for (let i = 0; i < players; i++) {
+            let p;
             if (DEBUG) {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], DEBUG_POS_Y[i], DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH, AI_SENSORS);
+                p = add_player(i, "player", STATE.MOVING, 0, 0, DEBUG_POS_X[i], DEBUG_POS_Y[i], DEBUG_ANGLE[i] + 0, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH, AI_SENSORS);
             } else {
-                add_player(objects, id, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, colors[i], 10, DEFAULT_TAIL_LENGTH);
+                p = add_player(i, "player", STATE.MOVING, 0, 0, Math.random() * w, Math.random() * h, Math.random() * 360, DEFAULT_TURN_SPEED, COLORS[i], 10, DEFAULT_TAIL_LENGTH);
             }
-            id++;
         }
 
         for (let i = 0; i < apples; i++) {
             if (DEBUG) {
-                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, 530, 500, "green", 5));
+                add_apple(i, "apple", STATE.FROZEN, DEBUG_APPLE_POS_X[i], DEBUG_APPLE_POS_Y[i], "green", 5);
             } else {
-                apple_list.push(add_static_obj(objects, id, "apple", STATE.FROZEN, Math.random() * w, Math.random * h, "green", 5));
+                add_apple(i, "apple", STATE.FROZEN, Math.random() * w, Math.random() * h, "green", 5);
             }
-            id++;
         }
-
+        score_updater(SCORE_UPDATE, SCORE_UPDATE_TIME);
         start_game();
     }
 
     function init() {
-        w = window.innerWidth;
-        h = window.innerHeight;
-
-        game_mode = MODES.AI;
-
-        canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        ctx = canvas.getContext('2d');
-
         console.log("-- Start --");
-        document.getElementsByClassName('background-container')[0].appendChild(canvas);
-        add_event_listeners();
 
         if (FPS_REPORT) fps_counter();
 
-        //init_tensorflow();
+        game_mode = MODES.AI;
+        add_event_listeners();
+        init_DOMS();
         init_game(PLAYERS, APPLES);
+        //init_tensorflow();
     }
 
     init();
